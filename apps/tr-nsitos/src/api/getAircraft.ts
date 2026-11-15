@@ -39,8 +39,14 @@ let tokenCache: { token: string; exp: number } | null = null;
 
 async function getToken(): Promise<string | null> {
   const env = process.env as Record<string, string | undefined>;
-  const id = env.ZITE_OPENSKY_CLIENT_ID;
-  const secret = env.ZITE_OPENSKY_CLIENT_SECRET;
+  // Accept values pasted as JSON fragments, e.g. "clientId":"abc"
+  const clean = (v: string | undefined, key: string) => {
+    if (!v) return v;
+    const m = v.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
+    return (m ? m[1] : v).trim().replace(/^"|"$/g, '');
+  };
+  const id = clean(env.ZITE_OPENSKY_CLIENT_ID, 'clientId');
+  const secret = clean(env.ZITE_OPENSKY_CLIENT_SECRET, 'clientSecret');
   if (!id || !secret) return null;
   if (tokenCache && tokenCache.exp > Date.now() + 30_000) return tokenCache.token;
   const res = await fetchTimeout(
