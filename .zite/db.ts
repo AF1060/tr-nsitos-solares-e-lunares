@@ -85,6 +85,86 @@ export type ZiteAttachmentInput =
   | { url: string; filename?: string }
   | ZiteAttachment;
 
+/** A record in the "Observer Settings" table, as it is read back. */
+export type ObserverSettingsRecordType = {
+  id: string;
+  /** Primary field. "Profile Name" */
+  profileName?: string;
+  owner?: string | string[];
+  useGps?: boolean;
+  /** "Latitude". 5 decimal places, format: local (e.g. 1,000,000.50) */
+  latitude?: number;
+  /** "Longitude". 5 decimal places, format: local (e.g. 1,000,000.50) */
+  longitude?: number;
+  defaultTarget?: "Sol" | "Lua" | string;
+  /** "Margin Degrees". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  marginDegrees?: number;
+  /** "Max Travel Km". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  maxTravelKm?: number;
+  /** "Min Elevation Degrees". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  minElevationDegrees?: number;
+  /** "Focal Length Mm". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  focalLengthMm?: number;
+  sensor?: "Micro 4/3" | "APS-C" | "Full Frame" | string;
+  /** "ISS Alert Minutes". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  issAlertMinutes?: number;
+  /** "Aircraft Alert Seconds". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  aircraftAlertSeconds?: number;
+  voiceAlerts?: boolean;
+};
+
+/** What you may write when creating or updating a record in the "Observer Settings" table. */
+export type ObserverSettingsRecordInput = {
+  profileName: string | null;
+  owner: string | string[] | null;
+  useGps: string | boolean | null;
+  latitude: string | number | null;
+  longitude: string | number | null;
+  defaultTarget: "Sol" | "Lua" | string | null;
+  marginDegrees: string | number | null;
+  maxTravelKm: string | number | null;
+  minElevationDegrees: string | number | null;
+  focalLengthMm: string | number | null;
+  sensor: "Micro 4/3" | "APS-C" | "Full Frame" | string | null;
+  issAlertMinutes: string | number | null;
+  aircraftAlertSeconds: string | number | null;
+  voiceAlerts: string | boolean | null;
+};
+
+/** A record in the "Planned Passes" table, as it is read back. */
+export type PlannedPassesRecordType = {
+  id: string;
+  /** Primary field. "Title" */
+  title?: string;
+  owner?: string | string[];
+  object?: "ISS" | "Avião" | string;
+  target?: "Sol" | "Lua" | string;
+  /** "Disc Entry Time". Date+time field (ISO 8601 timestamp), null when unset, date: "local" format, time: 24h, tz: Europe/Lisbon */
+  discEntryTime?: string;
+  /** "Seconds In Disc". 2 decimal places, format: local (e.g. 1,000,000.50) */
+  secondsInDisc?: number;
+  /** "Site Latitude". 5 decimal places, format: local (e.g. 1,000,000.50) */
+  siteLatitude?: number;
+  /** "Site Longitude". 5 decimal places, format: local (e.g. 1,000,000.50) */
+  siteLongitude?: number;
+  quality?: "Excelente" | "Boa" | "Razoável" | "Fraca" | string;
+  alarmEnabled?: boolean;
+};
+
+/** What you may write when creating or updating a record in the "Planned Passes" table. */
+export type PlannedPassesRecordInput = {
+  title: string | null;
+  owner: string | string[] | null;
+  object: "ISS" | "Avião" | string | null;
+  target: "Sol" | "Lua" | string | null;
+  discEntryTime: string | Date | null;
+  secondsInDisc: string | number | null;
+  siteLatitude: string | number | null;
+  siteLongitude: string | number | null;
+  quality: "Excelente" | "Boa" | "Razoável" | "Fraca" | string | null;
+  alarmEnabled: string | boolean | null;
+};
+
 export interface ZiteAuthUser {
   id: string;
   name: string;
@@ -95,6 +175,8 @@ export interface ZiteAuthUser {
 }
 
 export const zite = {
+  observerSettings: createTableClient<ObserverSettingsRecordType, ObserverSettingsRecordInput>('ObserverSettings'), // "Observer Settings"
+  plannedPasses: createTableClient<PlannedPassesRecordType, PlannedPassesRecordInput>('PlannedPasses'), // "Planned Passes"
   sql: createSqlClient(),
   auth: createAuthClient<ZiteAuthUser>(),
 };

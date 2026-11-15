@@ -1,3 +1,379 @@
 {
-  "tables": []
+  "tables": [
+    {
+      "id": "tmrvGFvStSz",
+      "sdkName": "observerSettings",
+      "name": "Observer Settings",
+      "primaryFieldId": "f1pKXQarPDs",
+      "fields": [
+        {
+          "id": "f1pKXQarPDs",
+          "sdkName": "profileName",
+          "definition": {
+            "name": "Profile Name",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "fuqMihoTdqv",
+          "sdkName": "owner",
+          "definition": {
+            "name": "Owner",
+            "type": "user",
+            "template": {
+              "internalOnly": false,
+              "allowMultiple": false,
+              "deleteRowWhenUserDeleted": true
+            }
+          }
+        },
+        {
+          "id": "fkyyrTXax4T",
+          "sdkName": "useGps",
+          "definition": {
+            "name": "Use GPS",
+            "type": "checkbox",
+            "template": {
+              "defaultValue": true
+            }
+          }
+        },
+        {
+          "id": "fut2ZXnsC6C",
+          "sdkName": "latitude",
+          "definition": {
+            "name": "Latitude",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 5
+            }
+          }
+        },
+        {
+          "id": "f2Hz6jZwgfM",
+          "sdkName": "longitude",
+          "definition": {
+            "name": "Longitude",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 5
+            }
+          }
+        },
+        {
+          "id": "fh1tQGnnjhG",
+          "sdkName": "defaultTarget",
+          "definition": {
+            "name": "Default Target",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "gNbN",
+                  "label": "Sol",
+                  "color": "purple"
+                },
+                {
+                  "value": "vdfW",
+                  "label": "Lua",
+                  "color": "orange"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fn4zCE4vski",
+          "sdkName": "marginDegrees",
+          "definition": {
+            "name": "Margin Degrees",
+            "type": "number",
+            "template": {
+              "defaultValue": 2,
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fgfLxfPP77K",
+          "sdkName": "maxTravelKm",
+          "definition": {
+            "name": "Max Travel Km",
+            "type": "number",
+            "template": {
+              "defaultValue": 30,
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fene71E8h1j",
+          "sdkName": "minElevationDegrees",
+          "definition": {
+            "name": "Min Elevation Degrees",
+            "type": "number",
+            "template": {
+              "defaultValue": 10,
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fjpzpSp4PAR",
+          "sdkName": "focalLengthMm",
+          "definition": {
+            "name": "Focal Length Mm",
+            "type": "number",
+            "template": {
+              "defaultValue": 600,
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "f53wT1y9wNr",
+          "sdkName": "sensor",
+          "definition": {
+            "name": "Sensor",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "htKp",
+                  "label": "Micro 4/3",
+                  "color": "purple"
+                },
+                {
+                  "value": "kTCZ",
+                  "label": "APS-C",
+                  "color": "orange"
+                },
+                {
+                  "value": "smx4",
+                  "label": "Full Frame",
+                  "color": "blue"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fpUMgh7Jex8",
+          "sdkName": "issAlertMinutes",
+          "definition": {
+            "name": "ISS Alert Minutes",
+            "type": "number",
+            "template": {
+              "defaultValue": 15,
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "ffEPjVmRQMG",
+          "sdkName": "aircraftAlertSeconds",
+          "definition": {
+            "name": "Aircraft Alert Seconds",
+            "type": "number",
+            "template": {
+              "defaultValue": 60,
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "f1PkR4XqF1r",
+          "sdkName": "voiceAlerts",
+          "definition": {
+            "name": "Voice Alerts",
+            "type": "checkbox",
+            "template": {
+              "defaultValue": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tw5ErNpSfq5",
+      "sdkName": "plannedPasses",
+      "name": "Planned Passes",
+      "primaryFieldId": "f1S2p7fiSUY",
+      "fields": [
+        {
+          "id": "f1S2p7fiSUY",
+          "sdkName": "title",
+          "definition": {
+            "name": "Title",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "f8t15j2MTav",
+          "sdkName": "owner",
+          "definition": {
+            "name": "Owner",
+            "type": "user",
+            "template": {
+              "internalOnly": false,
+              "allowMultiple": false,
+              "deleteRowWhenUserDeleted": false
+            }
+          }
+        },
+        {
+          "id": "fnxG72fVLRv",
+          "sdkName": "object",
+          "definition": {
+            "name": "Object",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "7xGb",
+                  "label": "ISS",
+                  "color": "purple"
+                },
+                {
+                  "value": "sK5S",
+                  "label": "Avião",
+                  "color": "orange"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "f7nTWN38xrp",
+          "sdkName": "target",
+          "definition": {
+            "name": "Target",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "oTHb",
+                  "label": "Sol",
+                  "color": "purple"
+                },
+                {
+                  "value": "ce2N",
+                  "label": "Lua",
+                  "color": "orange"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fbJ7ea9ideX",
+          "sdkName": "discEntryTime",
+          "definition": {
+            "name": "Disc Entry Time",
+            "type": "datetime",
+            "template": {
+              "timezone": "Europe/Lisbon",
+              "dateFormat": "local",
+              "timeFormat": "24h",
+              "displayTimeZone": false
+            }
+          }
+        },
+        {
+          "id": "fdcSYyRPTeP",
+          "sdkName": "secondsInDisc",
+          "definition": {
+            "name": "Seconds In Disc",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 2
+            }
+          }
+        },
+        {
+          "id": "fh32UFf2FRo",
+          "sdkName": "siteLatitude",
+          "definition": {
+            "name": "Site Latitude",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 5
+            }
+          }
+        },
+        {
+          "id": "fkgyD5o1knq",
+          "sdkName": "siteLongitude",
+          "definition": {
+            "name": "Site Longitude",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 5
+            }
+          }
+        },
+        {
+          "id": "fgBeLJS38wv",
+          "sdkName": "quality",
+          "definition": {
+            "name": "Quality",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "2Nsk",
+                  "label": "Excelente",
+                  "color": "purple"
+                },
+                {
+                  "value": "vsr5",
+                  "label": "Boa",
+                  "color": "orange"
+                },
+                {
+                  "value": "45Mk",
+                  "label": "Razoável",
+                  "color": "blue"
+                },
+                {
+                  "value": "jt8u",
+                  "label": "Fraca",
+                  "color": "gray"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fuvBgbbUBQS",
+          "sdkName": "alarmEnabled",
+          "definition": {
+            "name": "Alarm Enabled",
+            "type": "checkbox",
+            "template": {
+              "defaultValue": true
+            }
+          }
+        }
+      ]
+    }
+  ]
 }
