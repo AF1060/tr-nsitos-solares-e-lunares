@@ -7,6 +7,8 @@ declare namespace NodeJS {
     ZITE_APP_URL: string;
     /** Client ID da API da OpenSky Network (credenciais OAuth da sua conta) */
     ZITE_OPENSKY_CLIENT_ID: string;
+    /** Client Secret da API da OpenSky Network (credenciais OAuth da sua conta) */
+    ZITE_OPENSKY_CLIENT_SECRET: string;
     [key: string]: string | undefined;
   }
 }
