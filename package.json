@@ -1,0 +1,15 @@
+{
+  "name": "tr-nsitos-solares-e-lunares",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "automations/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "zitejs check"
+  },
+  "dependencies": {
+    "zitejs": "0.10.2"
+  }
+}
