@@ -5,12 +5,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@project/compo
 import { cn } from '@project/components/lib/utils';
 import { useApp } from '../context/AppContext';
 import { useAircraft, RADAR_KM } from '../context/AircraftContext';
-import { planePolar, planeTrack, PlanePrediction } from '../lib/aircraft';
+import { planeAt, planePolar, planeTrack, PlanePrediction } from '../lib/aircraft';
+import { compass } from '../lib/geo';
+import { Navigation } from 'lucide-react';
 import { bodyTopo, fieldOfView } from '../lib/astro';
-import { fmtIn, fmtNum, fmtTime } from '../lib/format';
+import { fmtCoord, fmtIn, fmtNum, fmtTime, mapsUrl } from '../lib/format';
 import DiscDiagram from '../components/DiscDiagram';
 
 export default function Aircraft() {
+  const { settings } = useApp();
   const { watching, setWatching, predictions, lastUpdate, error, rateLimited, source, planes } = useAircraft();
   const [open, setOpen] = useState<PlanePrediction | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -37,15 +40,18 @@ export default function Aircraft() {
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-3 lg:col-span-2"><RadarView predictions={predictions} /></div>
         <div className="space-y-3">
-          <div className="text-sm font-medium">Vão cruzar o disco (próx. 10 min)</div>
+          <div className="text-sm font-medium">Vão cruzar o disco (próx. 10 min, até {settings.maxTravelKm} km)</div>
           {predictions.length === 0 && <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Nenhum avião previsto para cruzar o disco ou a orla.</div>}
           {predictions.map((p) => (
             <button key={p.plane.icao24} onClick={() => setOpen(p)} className="w-full rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/60">
               <div className="flex justify-between"><span className="font-semibold">{p.plane.callsign}</span><span className="text-sm tabular-nums">{fmtIn((p.entry ?? p.closest) - now)}</span></div>
               <div className="text-xs text-muted-foreground">{fmtNum(p.plane.altM, 0)} m · {fmtNum(p.rangeKm, 0)} km · ± {fmtNum(p.errDeg, 2)}° / ± {fmtNum(p.errS, 0)} s</div>
               <div className={cn('mt-1 text-xs', p.confidence === 'baixa' ? 'text-muted-foreground' : 'text-primary')}>
-                {p.entry ? `Passa a ${fmtNum(p.minSep, 2)}° do centro · ${fmtNum(p.inDiscS, 1)} s no disco` : 'Roça a orla'} · confiança {p.confidence}
+                {p.entry ? `Aqui: passa a ${fmtNum(p.minSep, 2)}° do centro · ${fmtNum(p.inDiscS, 1)} s no disco · confiança ${p.confidence}` : 'Aqui: não entra no disco'}
               </div>
+              {p.alternatives[0] && (
+                <div className="mt-1 text-xs">Centro do disco: {fmtNum(p.alternatives[0].distKm, 1)} km para {compass(p.alternatives[0].brg)} às {fmtTime(p.alternatives[0].t)}{p.alternatives.length > 1 ? ` · +${p.alternatives.length - 1} locais` : ''}</div>
+              )}
             </button>
           ))}
           <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Previsão por extrapolação da rota atual (rumo, velocidade e razão de subida). A incerteza cresce com o tempo e com mudanças de rumo.</div>
@@ -59,6 +65,7 @@ export default function Aircraft() {
 function RadarView({ predictions }: { predictions: PlanePrediction[] }) {
   const { home, target } = useApp();
   const { planes } = useAircraft();
+  const { settings } = useApp();
   const body = bodyTopo(target, new Date(), home);
   const hot = new Set(predictions.map((p) => p.plane.icao24));
   const xy = (dist: number, brg: number) => [(dist / RADAR_KM) * Math.sin((brg * Math.PI) / 180) * 100, -(dist / RADAR_KM) * Math.cos((brg * Math.PI) / 180) * 100];
@@ -71,6 +78,27 @@ function RadarView({ predictions }: { predictions: PlanePrediction[] }) {
       {body.el > 0 && <line x1={0} y1={0} x2={bx} y2={by} stroke="hsl(var(--primary))" strokeWidth={0.8} strokeDasharray="2 1.5" />}
       {body.el > 0 && <circle cx={bx} cy={by} r={3} fill="hsl(var(--primary))" />}
       <circle r={1.8} fill="hsl(var(--foreground))" />
+      <circle r={(settings.maxTravelKm / RADAR_KM) * 100} fill="hsl(var(--primary))" fillOpacity={0.05} stroke="hsl(var(--primary))" strokeOpacity={0.4} strokeWidth={0.4} strokeDasharray="1.5 1.5" />
+      {predictions.map((pr) => {
+        const pts = [] as string[];
+        const tEnd = Math.max(pr.closest, pr.alternatives.reduce((m, a) => Math.max(m, a.t), 0)) + 30_000;
+        for (let t = Date.now(); t <= tEnd; t += 5000) {
+          const pos = planeAt(pr.plane, t);
+          const { dist, brg } = planePolar({ ...pr.plane, lat: pos.lat, lon: pos.lon }, home);
+          if (dist > RADAR_KM * 1.05) break;
+          const [x, y] = xy(dist, brg);
+          pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+        }
+        return (
+          <g key={`path-${pr.plane.icao24}`}>
+            <polyline points={pts.join(' ')} fill="none" stroke="hsl(var(--primary))" strokeWidth={0.7} strokeDasharray="2 1.5" />
+            {pr.alternatives.map((a, i) => {
+              const [x, y] = xy(a.distKm, a.brg);
+              return <rect key={i} x={x - 1.6} y={y - 1.6} width={3.2} height={3.2} transform={`rotate(45 ${x} ${y})`} fill="hsl(var(--chart-4))" />;
+            })}
+          </g>
+        );
+      })}
       {planes.map((p) => {
         const { dist, brg } = planePolar(p, home);
         if (dist > RADAR_KM) return null;
@@ -107,6 +135,20 @@ function PlaneDetail({ p, onClose }: { p: PlanePrediction | null; onClose: () =>
             </div>
             <DiscDiagram target={target} radiusDeg={p.radiusDeg} marginDeg={settings.marginDegrees} frame={frame} track={track} entry={p.entry} errDeg={p.errDeg} />
             <p className="text-xs text-muted-foreground">A faixa vermelha mostra a incerteza da trajetória prevista.</p>
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Locais para o avião passar no centro do disco (até {settings.maxTravelKm} km)</div>
+              {p.alternatives.length === 0 && <div className="text-sm text-muted-foreground">A linha central não passa a menos de {settings.maxTravelKm} km.</div>}
+              {p.alternatives.map((a, i) => (
+                <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3 text-sm">
+                  <div>
+                    <div className="font-semibold">{fmtNum(a.distKm, 1)} km para {compass(a.brg)}</div>
+                    <div className="text-xs text-muted-foreground">{fmtCoord(a.lat, a.lon)} · às {fmtTime(a.t)} (± {fmtNum(p.errS, 0)} s)</div>
+                  </div>
+                  <Button size="sm" variant="outline" asChild><a href={mapsUrl(a.lat, a.lon)} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-4 w-4" />Mapa</a></Button>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">Os aviões passam depressa: estes locais só servem se conseguir lá chegar antes. A margem de erro aumenta com o tempo.</p>
+            </div>
           </>
         )}
       </DialogContent>

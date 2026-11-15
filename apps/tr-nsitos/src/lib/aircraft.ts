@@ -1,5 +1,5 @@
-import { bodyTopo, Target } from './astro';
-import { LatLon, destination, geodeticToEcef, enuVec, skyOffset, len, haversineKm, bearingDeg } from './geo';
+import { bodyTopo, bodyEcefKm, Target } from './astro';
+import { LatLon, destination, geodeticToEcef, ecefToGeodetic, enuVec, skyOffset, len, haversineKm, bearingDeg, rayEarth, norm, sub } from './geo';
 import type { SkyPoint } from './iss';
 
 export interface Plane {
@@ -27,6 +27,34 @@ export interface PlanePrediction {
   rangeKm: number;
   confidence: 'alta' | 'média' | 'baixa';
   radiusDeg: number;
+  alternatives: AltSite[];
+}
+
+export interface AltSite { t: number; lat: number; lon: number; distKm: number; brg: number }
+
+/** Ground points from which the plane crosses the centre of the disc (centreline), within maxKm of home. */
+export function centerSites(p: Plane, home: LatLon, target: Target, now: number, horizonS: number, maxKm: number): AltSite[] {
+  const out: AltSite[] = [];
+  for (let t = now; t <= now + horizonS * 1000; t += 1000) {
+    const pos = planeAt(p, t);
+    if (pos.altKm < 0.05) continue;
+    const pe = geodeticToEcef(pos.lat, pos.lon, pos.altKm);
+    const G = rayEarth(pe, norm(sub(pe, bodyEcefKm(target, new Date(t)))));
+    if (!G) continue;
+    const g = ecefToGeodetic(G);
+    const d = haversineKm(home, g);
+    if (d <= maxKm) out.push({ t, lat: g.lat, lon: g.lon, distKm: d, brg: bearingDeg(home, g) });
+  }
+  return out;
+}
+
+function pickAlternatives(sites: AltSite[], n = 4): AltSite[] {
+  const chosen: AltSite[] = [];
+  for (const s of [...sites].sort((a, b) => a.distKm - b.distKm)) {
+    if (chosen.every((c) => haversineKm(c, s) >= 4)) chosen.push(s);
+    if (chosen.length >= n) break;
+  }
+  return chosen;
 }
 
 export function planeAt(p: Plane, t: number): LatLon & { altKm: number } {
@@ -48,7 +76,7 @@ export const errorModel = (dtS: number, v: number, rangeKm: number) => {
   return { errDeg: (Math.atan(errKm / Math.max(rangeKm, 1)) * 180) / Math.PI, errS: 1 + 0.03 * dtS };
 };
 
-export function predict(p: Plane, home: LatLon, target: Target, marginDeg: number, now: number, horizonS = 600): PlanePrediction | null {
+export function predict(p: Plane, home: LatLon, target: Target, marginDeg: number, now: number, maxKm = 30, horizonS = 600): PlanePrediction | null {
   const body0 = bodyTopo(target, new Date(now), home);
   if (body0.el < 0) return null;
   let best = { sep: Infinity, t: now };
@@ -63,7 +91,8 @@ export function predict(p: Plane, home: LatLon, target: Target, marginDeg: numbe
   const at = planeOffset(p, best.t, home, target);
   const r = at.body.radiusDeg;
   const { errDeg, errS } = errorModel((best.t - now) / 1000, p.velocity, at.range);
-  if (best.sep > r + marginDeg + errDeg) return null;
+  const alternatives = pickAlternatives(centerSites(p, home, target, now, horizonS, maxKm));
+  if (best.sep > r + marginDeg + errDeg && alternatives.length === 0) return null;
   let entry: number | null = null, exit: number | null = null, marginEntry: number | null = null;
   for (let t = best.t - 120_000; t <= best.t + 120_000; t += 50) {
     if (t < now - 5000) continue;
@@ -75,7 +104,7 @@ export function predict(p: Plane, home: LatLon, target: Target, marginDeg: numbe
   return {
     plane: p, closest: best.t, minSep: best.sep, entry, marginEntry,
     inDiscS: entry !== null && exit !== null ? (exit - entry) / 1000 : 0,
-    errDeg, errS, rangeKm: at.range, confidence, radiusDeg: r,
+    errDeg, errS, rangeKm: at.range, confidence, radiusDeg: r, alternatives,
   };
 }
 

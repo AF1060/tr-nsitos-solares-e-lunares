@@ -8,6 +8,7 @@ import { fmtDay, fmtHM, fmtNum, fmtTime } from '../lib/format';
 import { weatherAt } from '../lib/weather';
 import { passQuality } from '../components/PassDetail';
 import PassDetail from '../components/PassDetail';
+import SkyChart from '../components/SkyChart';
 import type { IssTransit } from '../lib/iss';
 
 const Stat = ({ label, value, sub }: { label: string; value: string; sub?: string }) => (
@@ -78,6 +79,7 @@ export default function Now() {
             ) : <div className="mt-1 text-sm text-muted-foreground">Sem passagens nos próximos 10 dias até {settings.maxTravelKm} km.</div>}
         </button>
       </div>
+      <SkyChart target={target} now={now} home={home} />
       <PassDetail pass={open} onClose={() => setOpen(null)} />
     </div>
   );

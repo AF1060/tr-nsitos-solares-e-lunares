@@ -58,10 +58,10 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
   const predictions = useMemo(() => {
     if (!watching) return [];
     return planes
-      .map((p) => predict(p, home, target, settings.marginDegrees, now))
-      .filter((x): x is PlanePrediction => !!x && x.closest > now - 3000)
-      .sort((a, b) => a.closest - b.closest);
-  }, [planes, home, target, settings.marginDegrees, now, watching]);
+      .map((p) => predict(p, home, target, settings.marginDegrees, now, settings.maxTravelKm))
+      .filter((x): x is PlanePrediction => !!x && (x.closest > now - 3000 || x.alternatives.length > 0))
+      .sort((a, b) => (a.alternatives[0]?.t ?? a.closest) - (b.alternatives[0]?.t ?? b.closest));
+  }, [planes, home, target, settings.marginDegrees, settings.maxTravelKm, now, watching]);
 
   return (
     <AircraftCtx.Provider value={{ watching, setWatching, planes, predictions, lastUpdate, error, ...meta }}>
