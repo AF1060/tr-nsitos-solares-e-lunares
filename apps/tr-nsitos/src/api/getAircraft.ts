@@ -1,6 +1,40 @@
 import { z } from 'zod';
 import { createEndpoint } from 'zitejs/backend';
 
+let openskyDownUntil = 0;
+
+async function fetchTimeout(url: string, init: RequestInit = {}, ms = 6000) {
+  const c = new AbortController();
+  const id = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { ...init, signal: c.signal }); } finally { clearTimeout(id); }
+}
+
+async function fromAdsbLol(lat: number, lon: number, radiusKm: number) {
+  const nm = Math.min(250, Math.ceil(radiusKm / 1.852));
+  const res = await fetchTimeout(`https://api.adsb.lol/v2/point/${lat.toFixed(4)}/${lon.toFixed(4)}/${nm}`, {}, 8000);
+  if (!res.ok) throw new Error(`adsb.lol respondeu ${res.status}`);
+  const j = (await res.json()) as { now: number; ac?: Record<string, unknown>[] };
+  const nowS = j.now / 1000;
+  const planes = (j.ac ?? [])
+    .filter((a) => typeof a.lat === 'number' && typeof a.lon === 'number' && a.alt_baro !== 'ground' && typeof a.gs === 'number')
+    .map((a) => {
+      const altFt = Number(a.alt_geom ?? a.alt_baro ?? 0);
+      return {
+        icao24: String(a.hex),
+        callsign: String(a.flight ?? '').trim() || String(a.r ?? a.hex).toUpperCase(),
+        country: String(a.t ?? ''),
+        posTime: nowS - Number(a.seen_pos ?? 0),
+        lat: Number(a.lat),
+        lon: Number(a.lon),
+        altM: altFt * 0.3048,
+        velocity: Number(a.gs) * 0.514444,
+        track: Number(a.track ?? a.true_heading ?? 0),
+        vrate: (Number(a.geom_rate ?? a.baro_rate ?? 0) * 0.3048) / 60,
+      };
+    });
+  return { planes, time: nowS };
+}
+
 let tokenCache: { token: string; exp: number } | null = null;
 
 async function getToken(): Promise<string | null> {
@@ -9,7 +43,7 @@ async function getToken(): Promise<string | null> {
   const secret = env.ZITE_OPENSKY_CLIENT_SECRET;
   if (!id || !secret) return null;
   if (tokenCache && tokenCache.exp > Date.now() + 30_000) return tokenCache.token;
-  const res = await fetch(
+  const res = await fetchTimeout(
     'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token',
     {
       method: 'POST',
@@ -45,25 +79,35 @@ export default createEndpoint({
   outputSchema: z.object({
     planes: z.array(plane),
     authenticated: z.boolean(),
+    source: z.string(),
     rateLimited: z.boolean(),
     remaining: z.number().nullable(),
     time: z.number(),
   }),
   execute: async ({ input }) => {
+    if (Date.now() > openskyDownUntil) {
+      try {
+        return await fromOpenSky(input);
+      } catch (e) {
+        console.error('OpenSky indisponível, a usar adsb.lol', e);
+        openskyDownUntil = Date.now() + 10 * 60_000;
+      }
+    }
+    const r = await fromAdsbLol(input.lat, input.lon, input.radiusKm);
+    return { ...r, authenticated: false, rateLimited: false, remaining: null, source: 'adsb.lol' };
+  },
+});
+
+async function fromOpenSky(input: { lat: number; lon: number; radiusKm: number }) {
     const dLat = input.radiusKm / 111;
     const dLon = input.radiusKm / (111 * Math.cos((input.lat * Math.PI) / 180));
     const url = `https://opensky-network.org/api/states/all?lamin=${input.lat - dLat}&lomin=${input.lon - dLon}&lamax=${input.lat + dLat}&lomax=${input.lon + dLon}`;
     const token = await getToken();
-    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const res = await fetchTimeout(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     const remainingHeader = res.headers.get('X-Rate-Limit-Remaining');
     const remaining = remainingHeader ? Number(remainingHeader) : null;
-    if (res.status === 429) {
-      return { planes: [], authenticated: !!token, rateLimited: true, remaining, time: Date.now() / 1000 };
-    }
-    if (!res.ok) {
-      console.error('OpenSky states error', res.status, await res.text());
-      throw new Error(`OpenSky respondeu ${res.status}`);
-    }
+    if (res.status === 429) throw new Error('OpenSky: limite atingido');
+    if (!res.ok) throw new Error(`OpenSky respondeu ${res.status}`);
     const j = (await res.json()) as { time: number; states: unknown[][] | null };
     const planes = (j.states ?? [])
       .filter((s) => s[5] != null && s[6] != null && !s[8])
@@ -79,6 +123,5 @@ export default createEndpoint({
         track: Number(s[10] ?? 0),
         vrate: Number(s[11] ?? 0),
       }));
-    return { planes, authenticated: !!token, rateLimited: false, remaining, time: j.time };
-  },
-});
+    return { planes, authenticated: !!token, rateLimited: false, remaining, time: j.time, source: 'OpenSky' };
+}

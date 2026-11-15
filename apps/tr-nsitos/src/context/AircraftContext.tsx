@@ -13,6 +13,7 @@ interface Ctx {
   authenticated: boolean;
   rateLimited: boolean;
   remaining: number | null;
+  source: string;
 }
 
 const AircraftCtx = createContext<Ctx | null>(null);
@@ -25,7 +26,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
   const [planes, setPlanes] = useState<Plane[]>([]);
   const [lastUpdate, setLast] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [meta, setMeta] = useState({ authenticated: false, rateLimited: false, remaining: null as number | null });
+  const [meta, setMeta] = useState({ authenticated: false, rateLimited: false, remaining: null as number | null, source: '' });
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
       try {
         const r = await getAircraft({ lat: home.lat, lon: home.lon, radiusKm: RADAR_KM });
         if (!alive) return;
-        setMeta({ authenticated: r.authenticated, rateLimited: r.rateLimited, remaining: r.remaining });
+        setMeta({ authenticated: r.authenticated, rateLimited: r.rateLimited, remaining: r.remaining, source: r.source });
         if (!r.rateLimited) { setPlanes(r.planes); setLast(Date.now()); }
         setError(null);
       } catch {

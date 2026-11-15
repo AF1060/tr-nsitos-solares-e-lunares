@@ -11,7 +11,7 @@ import { fmtIn, fmtNum, fmtTime } from '../lib/format';
 import DiscDiagram from '../components/DiscDiagram';
 
 export default function Aircraft() {
-  const { watching, setWatching, predictions, lastUpdate, error, rateLimited, authenticated, planes } = useAircraft();
+  const { watching, setWatching, predictions, lastUpdate, error, rateLimited, source, planes } = useAircraft();
   const [open, setOpen] = useState<PlanePrediction | null>(null);
   const [now, setNow] = useState(Date.now());
   useEffect(() => { setWatching(true); }, [setWatching]);
@@ -24,7 +24,7 @@ export default function Aircraft() {
           <h1 className="text-2xl font-semibold">Aviões · {RADAR_KM} km</h1>
           <p className="text-sm text-muted-foreground">
             {lastUpdate ? `Atualizado há ${Math.round((now - lastUpdate) / 1000)} s · ${planes.length} aviões` : watching ? 'A obter dados…' : 'Vigia em pausa'}
-            {!authenticated && lastUpdate ? ' · modo anónimo' : ''}
+            {source ? ` · fonte: ${source}` : ''}
           </p>
         </div>
         <Button variant="outline" onClick={() => setWatching(!watching)}>{watching ? <><Pause className="mr-2 h-4 w-4" />Pausar vigia</> : <><Play className="mr-2 h-4 w-4" />Vigiar</>}</Button>
