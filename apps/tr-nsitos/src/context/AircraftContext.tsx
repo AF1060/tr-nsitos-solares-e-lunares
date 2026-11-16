@@ -19,7 +19,7 @@ interface Ctx {
 
 const AircraftCtx = createContext<Ctx | null>(null);
 export const useAircraft = () => useContext(AircraftCtx)!;
-export const RADAR_KM = 120;
+export const RADAR_KM = 80;
 
 export function AircraftProvider({ children }: { children: ReactNode }) {
   const { home, target, settings, loaded } = useApp();
@@ -56,7 +56,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
         if (!r.rateLimited) { setPlanes(r.planes); setLast(Date.now()); }
         setError(null);
       } catch {
-        if (alive) setError('Falha ao contactar a OpenSky');
+        if (alive) setError('Sem ligação às fontes de dados de aviões (OpenSky e adsb.lol). A tentar de novo…');
       }
     };
     void poll();

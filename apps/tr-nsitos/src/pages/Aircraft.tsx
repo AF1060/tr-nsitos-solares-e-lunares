@@ -13,7 +13,8 @@ import { fmtCoord, fmtIn, fmtNum, fmtTime, mapsUrl } from '../lib/format';
 import DiscDiagram from '../components/DiscDiagram';
 
 export default function Aircraft() {
-  const { settings } = useApp();
+  const { settings, target } = useApp();
+  const discName = target === 'Sol' ? 'ao disco solar' : 'ao disco lunar';
   const { watching, setWatching, predictions, lastUpdate, error, rateLimited, source, planes } = useAircraft();
   const [open, setOpen] = useState<PlanePrediction | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -38,16 +39,26 @@ export default function Aircraft() {
         </div>
       )}
       <div className="grid gap-5 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-3 lg:col-span-2"><RadarView predictions={predictions} /></div>
+        <div className="rounded-xl border border-border bg-card p-3 lg:col-span-2">
+          <RadarView predictions={predictions} />
+          <div className="mt-2 grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+            <span>✚ Você (centro do radar)</span>
+            <span><span className="text-primary">●</span> {target}, na direção onde está no céu</span>
+            <span>• Avião, com traço a indicar o rumo</span>
+            <span><span className="text-primary">●</span> Avião que vai cruzar o disco (com rota prevista)</span>
+            <span><span style={{ color: 'hsl(var(--chart-4))' }}>◆</span> Local onde o avião passa no centro do disco</span>
+            <span>Círculo tracejado: distância máxima que se desloca ({settings.maxTravelKm} km)</span>
+          </div>
+        </div>
         <div className="space-y-3">
-          <div className="text-sm font-medium">Vão cruzar o disco (próx. 10 min, até {settings.maxTravelKm} km)</div>
-          {predictions.length === 0 && <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Nenhum avião previsto para cruzar o disco ou a orla.</div>}
+          <div className="text-sm font-medium">Vão passar frente {discName} (próx. 10 min, visto daqui ou de um local até {settings.maxTravelKm} km)</div>
+          {predictions.length === 0 && <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Nenhum avião previsto para passar frente {discName} ou à orla.</div>}
           {predictions.map((p) => (
             <button key={p.plane.icao24} onClick={() => setOpen(p)} className="w-full rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/60">
               <div className="flex justify-between"><span className="font-semibold">{p.plane.callsign}</span><span className="text-sm tabular-nums">{fmtIn((p.entry ?? p.closest) - now)}</span></div>
               <div className="text-xs text-muted-foreground">{fmtNum(p.plane.altM, 0)} m · {fmtNum(p.rangeKm, 0)} km · ± {fmtNum(p.errDeg, 2)}° / ± {fmtNum(p.errS, 0)} s</div>
               <div className={cn('mt-1 text-xs', p.confidence === 'baixa' ? 'text-muted-foreground' : 'text-primary')}>
-                {p.entry ? `Aqui: passa a ${fmtNum(p.minSep, 2)}° do centro · ${fmtNum(p.inDiscS, 1)} s no disco · confiança ${p.confidence}` : 'Aqui: não entra no disco'}
+                {p.entry ? `No seu local: passa a ${fmtNum(p.minSep, 2)}° do centro · ${fmtNum(p.inDiscS, 1)} s no disco · confiança ${p.confidence}` : `No seu local não passa frente ${discName}; só num dos locais abaixo`}
               </div>
               {p.alternatives[0] && (
                 <div className="mt-1 text-xs">Centro do disco: {fmtNum(p.alternatives[0].distKm, 1)} km para {compass(p.alternatives[0].brg)} às {fmtTime(p.alternatives[0].t)}{p.alternatives.length > 1 ? ` · +${p.alternatives.length - 1} locais` : ''}</div>
@@ -72,12 +83,21 @@ function RadarView({ predictions }: { predictions: PlanePrediction[] }) {
   const [bx, by] = xy(RADAR_KM, body.az);
   return (
     <svg viewBox="-110 -110 220 220" className="mx-auto aspect-square max-h-[520px] w-full">
-      {[40, 80, 120].map((r) => <circle key={r} r={(r / RADAR_KM) * 100} fill="none" stroke="hsl(var(--border))" strokeWidth={0.4} />)}
-      {[40, 80, 120].map((r) => <text key={r} x={1.5} y={-(r / RADAR_KM) * 100 + 4} fontSize={3.5} fill="hsl(var(--muted-foreground))">{r} km</text>)}
+      {[20, 40, 60, 80].map((r) => <circle key={r} r={(r / RADAR_KM) * 100} fill="none" stroke="hsl(var(--border))" strokeWidth={0.4} />)}
+      {[20, 40, 60, 80].map((r) => <text key={r} x={1.5} y={-(r / RADAR_KM) * 100 + 4} fontSize={3.5} fill="hsl(var(--muted-foreground))">{r} km</text>)}
       {['N', 'E', 'S', 'O'].map((d, i) => { const [x, y] = xy(RADAR_KM * 1.07, i * 90); return <text key={d} x={x} y={y + 1.5} fontSize={5} textAnchor="middle" fill="hsl(var(--muted-foreground))">{d}</text>; })}
       {body.el > 0 && <line x1={0} y1={0} x2={bx} y2={by} stroke="hsl(var(--primary))" strokeWidth={0.8} strokeDasharray="2 1.5" />}
-      {body.el > 0 && <circle cx={bx} cy={by} r={3} fill="hsl(var(--primary))" />}
-      <circle r={1.8} fill="hsl(var(--foreground))" />
+      {body.el > 0 && (
+        <g>
+          <circle cx={bx} cy={by} r={7} fill="hsl(var(--primary))" fillOpacity={0.25} />
+          <circle cx={bx} cy={by} r={4.5} fill={target === 'Lua' ? 'hsl(var(--foreground))' : 'hsl(var(--primary))'} stroke="hsl(var(--primary))" strokeWidth={0.8} />
+          <text x={bx} y={by + (by > 0 ? -9 : 12)} fontSize={4} textAnchor="middle" fill="hsl(var(--primary))">{target} · {body.el.toFixed(0)}° alt.</text>
+        </g>
+      )}
+      {body.el <= 0 && <text x={0} y={-104} fontSize={4} textAnchor="middle" fill="hsl(var(--muted-foreground))">{target} abaixo do horizonte</text>}
+      <line x1={-3.5} y1={0} x2={3.5} y2={0} stroke="hsl(var(--foreground))" strokeWidth={0.7} />
+      <line x1={0} y1={-3.5} x2={0} y2={3.5} stroke="hsl(var(--foreground))" strokeWidth={0.7} />
+      <text x={3} y={6} fontSize={3.5} fill="hsl(var(--foreground))">Você</text>
       <circle r={(settings.maxTravelKm / RADAR_KM) * 100} fill="hsl(var(--primary))" fillOpacity={0.05} stroke="hsl(var(--primary))" strokeOpacity={0.4} strokeWidth={0.4} strokeDasharray="1.5 1.5" />
       {predictions.map((pr) => {
         const pts = [] as string[];
