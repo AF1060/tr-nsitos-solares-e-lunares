@@ -81,7 +81,7 @@ const plane = z.object({
 
 export default createEndpoint({
   description: 'Obtém os aviões num raio à volta do observador (OpenSky Network)',
-  inputSchema: z.object({ lat: z.number(), lon: z.number(), radiusKm: z.number() }),
+  inputSchema: z.object({ lat: z.number(), lon: z.number(), radiusKm: z.number(), skipOpenSky: z.boolean().optional() }),
   outputSchema: z.object({
     planes: z.array(plane),
     authenticated: z.boolean(),
@@ -91,7 +91,7 @@ export default createEndpoint({
     time: z.number(),
   }),
   execute: async ({ input }) => {
-    if (Date.now() > openskyDownUntil) {
+    if (!input.skipOpenSky && Date.now() > openskyDownUntil) {
       try {
         return await fromOpenSky(input);
       } catch (e) {

@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
+import { fetchOpenSkyBrowser } from '../lib/openskyBrowser';
 import { getAircraft } from 'zitejs/api';
 import { useApp } from './AppContext';
 import { predict, Plane, PlanePrediction } from '../lib/aircraft';
@@ -28,14 +29,28 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState({ authenticated: false, rateLimited: false, remaining: null as number | null, source: '' });
   const [now, setNow] = useState(Date.now());
+  const browserDownUntil = useRef(0);
 
   useEffect(() => {
     if (!watching || !loaded) return;
     let alive = true;
     const poll = async () => {
       if (document.visibilityState !== 'visible') return;
+      if (Date.now() > browserDownUntil.current) {
+        try {
+          const b = await fetchOpenSkyBrowser(home.lat, home.lon, RADAR_KM);
+          if (!alive) return;
+          setMeta({ authenticated: false, rateLimited: false, remaining: b.remaining, source: 'OpenSky (telemóvel)' });
+          setPlanes(b.planes); setLast(Date.now()); setError(null);
+          return;
+        } catch (e) {
+          const retry = (e as { retryAfter?: number }).retryAfter;
+          browserDownUntil.current = Date.now() + (retry ? retry * 1000 : 5 * 60_000);
+          console.warn('OpenSky no navegador falhou, a usar o servidor', e);
+        }
+      }
       try {
-        const r = await getAircraft({ lat: home.lat, lon: home.lon, radiusKm: RADAR_KM });
+        const r = await getAircraft({ lat: home.lat, lon: home.lon, radiusKm: RADAR_KM, skipOpenSky: true });
         if (!alive) return;
         setMeta({ authenticated: r.authenticated, rateLimited: r.rateLimited, remaining: r.remaining, source: r.source });
         if (!r.rateLimited) { setPlanes(r.planes); setLast(Date.now()); }
