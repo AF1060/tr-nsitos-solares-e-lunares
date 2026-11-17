@@ -79,7 +79,7 @@ export default function Now() {
             ) : <div className="mt-1 text-sm text-muted-foreground">Sem passagens nos próximos 10 dias até {settings.maxTravelKm} km.</div>}
         </button>
       </div>
-      <SkyChart target={target} now={now} home={home} />
+      <SkyChart target={target} now={now} home={home} minEl={settings.minElevationDegrees} />
       <PassDetail pass={open} onClose={() => setOpen(null)} />
     </div>
   );

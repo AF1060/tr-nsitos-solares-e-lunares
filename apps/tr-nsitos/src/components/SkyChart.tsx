@@ -35,7 +35,7 @@ export function visibility(target: Target, now: Date, home: LatLon) {
   return { above: true, visible: true, text: `Acima do horizonte · visível${sets}` };
 }
 
-export default function SkyChart({ target, now, home }: { target: Target; now: Date; home: LatLon }) {
+export default function SkyChart({ target, now, home, minEl }: { target: Target; now: Date; home: LatLon; minEl: number }) {
   const dayKey = now.toDateString();
   const curves = useMemo(() => ({ Sol: curve('Sol', now, home), Lua: curve('Lua', now, home) }), [dayKey, home]); // eslint-disable-line react-hooks/exhaustive-deps
   const bodies = (['Sol', 'Lua'] as Target[]).map((t) => ({ t, b: bodyTopo(t, now, home), v: visibility(t, now, home) }));
@@ -61,6 +61,9 @@ export default function SkyChart({ target, now, home }: { target: Target; now: D
         {[30, 60].map((e) => <text key={e} x={4} y={Y(e) - 3} fontSize={10} fill="hsl(var(--muted-foreground))">{e}°</text>)}
         <line x1={0} x2={W} y1={Y(0)} y2={Y(0)} stroke="hsl(var(--foreground))" strokeOpacity={0.6} />
         <text x={4} y={Y(0) + 12} fontSize={10} fill="hsl(var(--muted-foreground))">horizonte</text>
+        {minEl > 0 && <rect x={0} y={Y(minEl)} width={W} height={Y(0) - Y(minEl)} fill="hsl(var(--destructive))" fillOpacity={0.08} />}
+        {minEl > 0 && <line x1={0} x2={W} y1={Y(minEl)} y2={Y(minEl)} stroke="hsl(var(--destructive))" strokeOpacity={0.7} strokeDasharray="6 3" />}
+        {minEl > 0 && <text x={W - 4} y={Y(minEl) - 3} fontSize={10} textAnchor="end" fill="hsl(var(--destructive))">altura mínima {minEl}°</text>}
         {(['Sol', 'Lua'] as Target[]).map((t) => curves[t].map((pts, i) => (
           <polyline key={`${t}${i}`} points={pts} fill="none" stroke={color(t)} strokeOpacity={t === target ? 0.8 : 0.35} strokeWidth={1.5} strokeDasharray="4 4" />
         )))}
