@@ -165,9 +165,13 @@ function PlaneDetail({ p, onClose }: { p: PlanePrediction | null; onClose: () =>
                     <div className="font-semibold">{fmtNum(a.distKm, 1)} km para {compass(a.brg)}</div>
                     <div className="text-xs text-muted-foreground">{fmtCoord(a.lat, a.lon)} · às {fmtTime(a.t)} (± {fmtNum(p.errS, 0)} s)</div>
                     {a.band && (
-                      <div className="mt-1 text-xs">
-                        Faixa utilizável: ± {fmtNum(a.band.halfWidthM, 0)} m. Para o avião passar na parte de baixo do disco, desloque-se até {fmtNum(a.band.halfWidthM, 0)} m para {compass(a.band.belowBrg)}; para a parte de cima, para {compass((a.band.belowBrg + 180) % 360)}.
-                        {' '}No disco: {fmtNum(a.band.discCentreS, 1)} s no centro · {fmtNum(a.band.discEdgeS, 1)} s no limite da faixa.
+                      <div className="mt-1 space-y-1 text-xs">
+                        <div>Faixa utilizável: {fmtNum(a.band.halfWidthM * 2, 0)} m de largura (± {fmtNum(a.band.halfWidthM, 0)} m da linha central), para o avião passar em qualquer ponto do disco entre {fmtNum(OFFSET_FRAC * 100, 0)} % do raio abaixo e {fmtNum(OFFSET_FRAC * 100, 0)} % acima do centro.</div>
+                        <div>Para passar mais abaixo no disco, desloque-se para {compass(a.band.belowBrg)}; mais acima, para {compass((a.band.belowBrg + 180) % 360)}. No disco: {fmtNum(a.band.discCentreS, 1)} s no centro · {fmtNum(a.band.discEdgeS, 1)} s nos limites da faixa.</div>
+                        <div className="flex gap-3">
+                          <a className="underline" href={mapsUrl(a.band.below.lat, a.band.below.lon)} target="_blank" rel="noreferrer">Limite inferior ({compass(a.band.belowBrg)})</a>
+                          <a className="underline" href={mapsUrl(a.band.above.lat, a.band.above.lon)} target="_blank" rel="noreferrer">Limite superior ({compass((a.band.belowBrg + 180) % 360)})</a>
+                        </div>
                       </div>
                     )}
                   </div>
