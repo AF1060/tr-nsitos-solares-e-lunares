@@ -374,6 +374,152 @@
           }
         }
       ]
+    },
+    {
+      "id": "ti1NtLeMXtV",
+      "sdkName": "aircraftSightings",
+      "name": "Aircraft Sightings",
+      "primaryFieldId": "f787p7uRPwj",
+      "fields": [
+        {
+          "id": "f787p7uRPwj",
+          "sdkName": "callsign",
+          "definition": {
+            "name": "Callsign",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "fo7ZQMxWWYV",
+          "sdkName": "icao24",
+          "definition": {
+            "name": "Icao24",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "f6gcQn4wM99",
+          "sdkName": "airline",
+          "definition": {
+            "name": "Airline",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "frJaLQgFUWb",
+          "sdkName": "seenAt",
+          "definition": {
+            "name": "Seen At",
+            "type": "datetime",
+            "template": {
+              "timezone": "Europe/Lisbon",
+              "dateFormat": "local",
+              "timeFormat": "24h",
+              "displayTimeZone": false
+            }
+          }
+        },
+        {
+          "id": "fdHFy2u41rQ",
+          "sdkName": "weekday",
+          "definition": {
+            "name": "Weekday",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fq3HZvQzF9N",
+          "sdkName": "minuteOfDay",
+          "definition": {
+            "name": "Minute Of Day",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fufhKjbRaD1",
+          "sdkName": "latitude",
+          "definition": {
+            "name": "Latitude",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 5
+            }
+          }
+        },
+        {
+          "id": "f65CgSpx9nu",
+          "sdkName": "longitude",
+          "definition": {
+            "name": "Longitude",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 5
+            }
+          }
+        },
+        {
+          "id": "f1VcyMKftov",
+          "sdkName": "altitudeM",
+          "definition": {
+            "name": "Altitude M",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "f27zWHci29N",
+          "sdkName": "track",
+          "definition": {
+            "name": "Track",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "f8is6Vbio6p",
+          "sdkName": "speed",
+          "definition": {
+            "name": "Speed",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fkL2bQMfTG5",
+          "sdkName": "owner",
+          "definition": {
+            "name": "Owner",
+            "type": "user",
+            "template": {
+              "internalOnly": false,
+              "allowMultiple": false,
+              "deleteRowWhenUserDeleted": false
+            }
+          }
+        }
+      ]
     }
   ]
 }

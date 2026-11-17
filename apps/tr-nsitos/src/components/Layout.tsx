@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Sun, Moon, Radar, Satellite, Settings2, Telescope, Sparkles } from 'lucide-react';
+import { Sun, Moon, Radar, Satellite, Settings2, Telescope, Sparkles, BarChart3 } from 'lucide-react';
 import { Toaster } from '@project/components/ui/sonner';
 import { cn } from '@project/components/lib/utils';
 import { useApp } from '../context/AppContext';
@@ -10,6 +10,7 @@ const NAV = [
   { to: '/', label: 'Agora', icon: Telescope },
   { to: '/avioes', label: 'Aviões', icon: Radar },
   { to: '/iss', label: 'ISS', icon: Satellite },
+  { to: '/rotas', label: 'Rotas', icon: BarChart3 },
   { to: '/via-lactea', label: 'Via Láctea', icon: Sparkles },
   { to: '/definicoes', label: 'Definições', icon: Settings2 },
 ];
@@ -43,7 +44,7 @@ export default function Layout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6"><Outlet /></main>
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-background/95 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-border bg-background/95 backdrop-blur md:hidden">
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end className={({ isActive }) => cn('flex flex-col items-center gap-0.5 py-2 text-[11px]', isActive ? 'text-primary' : 'text-muted-foreground')}>
             <n.icon className="h-5 w-5" />{n.label}

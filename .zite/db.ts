@@ -165,6 +165,48 @@ export type PlannedPassesRecordInput = {
   alarmEnabled: string | boolean | null;
 };
 
+/** A record in the "Aircraft Sightings" table, as it is read back. */
+export type AircraftSightingsRecordType = {
+  id: string;
+  /** Primary field. "Callsign" */
+  callsign?: string;
+  icao24?: string;
+  airline?: string;
+  /** "Seen At". Date+time field (ISO 8601 timestamp), null when unset, date: "local" format, time: 24h, tz: Europe/Lisbon */
+  seenAt?: string;
+  /** "Weekday". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  weekday?: number;
+  /** "Minute Of Day". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  minuteOfDay?: number;
+  /** "Latitude". 5 decimal places, format: local (e.g. 1,000,000.50) */
+  latitude?: number;
+  /** "Longitude". 5 decimal places, format: local (e.g. 1,000,000.50) */
+  longitude?: number;
+  /** "Altitude M". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  altitudeM?: number;
+  /** "Track". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  track?: number;
+  /** "Speed". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  speed?: number;
+  owner?: string | string[];
+};
+
+/** What you may write when creating or updating a record in the "Aircraft Sightings" table. */
+export type AircraftSightingsRecordInput = {
+  callsign: string | null;
+  icao24: string | null;
+  airline: string | null;
+  seenAt: string | Date | null;
+  weekday: string | number | null;
+  minuteOfDay: string | number | null;
+  latitude: string | number | null;
+  longitude: string | number | null;
+  altitudeM: string | number | null;
+  track: string | number | null;
+  speed: string | number | null;
+  owner: string | string[] | null;
+};
+
 export interface ZiteAuthUser {
   id: string;
   name: string;
@@ -177,6 +219,7 @@ export interface ZiteAuthUser {
 export const zite = {
   observerSettings: createTableClient<ObserverSettingsRecordType, ObserverSettingsRecordInput>('ObserverSettings'), // "Observer Settings"
   plannedPasses: createTableClient<PlannedPassesRecordType, PlannedPassesRecordInput>('PlannedPasses'), // "Planned Passes"
+  aircraftSightings: createTableClient<AircraftSightingsRecordType, AircraftSightingsRecordInput>('AircraftSightings'), // "Aircraft Sightings"
   sql: createSqlClient(),
   auth: createAuthClient<ZiteAuthUser>(),
 };

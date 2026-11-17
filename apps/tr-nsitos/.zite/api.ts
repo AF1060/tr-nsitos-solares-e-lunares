@@ -7,7 +7,9 @@ import type { default as _DeletePlannedPassEp } from '../src/api/deletePlannedPa
 import type { default as _GetAircraftEp } from '../src/api/getAircraft';
 import type { default as _GetIssTleEp } from '../src/api/getIssTle';
 import type { default as _GetSettingsEp } from '../src/api/getSettings';
+import type { default as _GetSightingStatsEp } from '../src/api/getSightingStats';
 import type { default as _ListPlannedPassesEp } from '../src/api/listPlannedPasses';
+import type { default as _LogSightingsEp } from '../src/api/logSightings';
 import type { default as _SaveSettingsEp } from '../src/api/saveSettings';
 
 type _CreatePlannedPassCfg = typeof _CreatePlannedPassEp;
@@ -35,10 +37,20 @@ export type GetSettingsInputType = NonNullable<_GetSettingsCfg['inputSchema']> e
 export type GetSettingsOutputType = Awaited<ReturnType<_GetSettingsCfg['execute']>>;
 export const getSettings = createCaller<GetSettingsInputType, GetSettingsOutputType>('getSettings');
 
+type _GetSightingStatsCfg = typeof _GetSightingStatsEp;
+export type GetSightingStatsInputType = NonNullable<_GetSightingStatsCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_GetSightingStatsCfg['execute']>[0]['input'];
+export type GetSightingStatsOutputType = Awaited<ReturnType<_GetSightingStatsCfg['execute']>>;
+export const getSightingStats = createCaller<GetSightingStatsInputType, GetSightingStatsOutputType>('getSightingStats');
+
 type _ListPlannedPassesCfg = typeof _ListPlannedPassesEp;
 export type ListPlannedPassesInputType = NonNullable<_ListPlannedPassesCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_ListPlannedPassesCfg['execute']>[0]['input'];
 export type ListPlannedPassesOutputType = Awaited<ReturnType<_ListPlannedPassesCfg['execute']>>;
 export const listPlannedPasses = createCaller<ListPlannedPassesInputType, ListPlannedPassesOutputType>('listPlannedPasses');
+
+type _LogSightingsCfg = typeof _LogSightingsEp;
+export type LogSightingsInputType = NonNullable<_LogSightingsCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_LogSightingsCfg['execute']>[0]['input'];
+export type LogSightingsOutputType = Awaited<ReturnType<_LogSightingsCfg['execute']>>;
+export const logSightings = createCaller<LogSightingsInputType, LogSightingsOutputType>('logSightings');
 
 type _SaveSettingsCfg = typeof _SaveSettingsEp;
 export type SaveSettingsInputType = NonNullable<_SaveSettingsCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_SaveSettingsCfg['execute']>[0]['input'];
@@ -52,6 +64,8 @@ export const api = {
   getAircraft,
   getIssTle,
   getSettings,
+  getSightingStats,
   listPlannedPasses,
+  logSightings,
   saveSettings,
 };

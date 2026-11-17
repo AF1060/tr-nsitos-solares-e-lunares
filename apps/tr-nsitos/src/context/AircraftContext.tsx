@@ -1,3 +1,4 @@
+import { recordPlanes } from '../lib/sightings';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import { fetchOpenSkyBrowser } from '../lib/openskyBrowser';
 import { getAircraft } from 'zitejs/api';
@@ -41,7 +42,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
           const b = await fetchOpenSkyBrowser(home.lat, home.lon, RADAR_KM);
           if (!alive) return;
           setMeta({ authenticated: false, rateLimited: false, remaining: b.remaining, source: 'OpenSky (telemóvel)' });
-          setPlanes(b.planes); setLast(Date.now()); setError(null);
+          setPlanes(b.planes); setLast(Date.now()); recordPlanes(b.planes); setError(null);
           return;
         } catch (e) {
           const retry = (e as { retryAfter?: number }).retryAfter;
@@ -53,7 +54,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
         const r = await getAircraft({ lat: home.lat, lon: home.lon, radiusKm: RADAR_KM, skipOpenSky: true });
         if (!alive) return;
         setMeta({ authenticated: r.authenticated, rateLimited: r.rateLimited, remaining: r.remaining, source: r.source });
-        if (!r.rateLimited) { setPlanes(r.planes); setLast(Date.now()); }
+        if (!r.rateLimited) { setPlanes(r.planes); setLast(Date.now()); recordPlanes(r.planes); }
         setError(null);
       } catch {
         if (alive) setError('Sem ligação às fontes de dados de aviões (OpenSky e adsb.lol). A tentar de novo…');
