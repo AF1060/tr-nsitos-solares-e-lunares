@@ -4,6 +4,7 @@ import {
   DEG, Vec, LatLon, sub, norm, dot, rayEarth, segDist, geodeticToEcef, ecefToGeodetic, enuVec,
   skyOffset, len, haversineKm, bearingDeg,
 } from './geo';
+import { offsetBand, OffsetBand } from './offset';
 
 export type SatRec = satellite.SatRec;
 export const makeSat = (l1: string, l2: string) => satellite.twoline2satrec(l1, l2);
@@ -81,6 +82,9 @@ export interface IssTransit {
   siteBearing: number;
   atSite: Analysis;
   atHome: Analysis;
+  /** centro = linha central; abaixo/acima = limite da faixa (passagem a 2/3 do raio do centro). */
+  siteOffset: 'centro' | 'abaixo' | 'acima';
+  band: OffsetBand | null;
 }
 
 export interface SearchOptions {
@@ -112,7 +116,7 @@ export async function searchTransits(sat: SatRec, target: Target, o: SearchOptio
     if (dot(norm(sub(b, he)), up) < minSin) { prevG = null; continue; }
     const G = centerGround(sat, target, date);
     if (!G) { prevG = null; continue; }
-    if (prevG && segDist(he, prevG, G) <= o.maxTravelKm + 3) {
+    if (prevG && segDist(he, prevG, G) <= o.maxTravelKm + 12) {
       const found = refine(sat, target, o, he, prevT - 3 * step, t + 3 * step);
       if (found) { out.push(found); t += 180_000; prevG = null; continue; }
     }
@@ -138,14 +142,28 @@ function refine(sat: SatRec, target: Target, o: SearchOptions, he: Vec, t0: numb
   const G = centerGround(sat, target, new Date(bestT));
   if (!G) return null;
   const g = ecefToGeodetic(G);
-  const site = { lat: g.lat, lon: g.lon };
-  const dist = haversineKm(o.home, site);
-  if (dist > o.maxTravelKm) return null;
-  if (bodyTopo(target, new Date(bestT), site).el < o.minElevDeg) return null;
+  const centre = { lat: g.lat, lon: g.lon };
+  const date = new Date(bestT);
+  const i0 = issEcef(sat, date), i1 = issEcef(sat, new Date(bestT + 1000));
+  const band = i0 && i1
+    ? offsetBand(i0, sub(i1, i0), bodyEcefKm(target, date), bodyTopo(target, date, centre).radiusDeg, norm(geodeticToEcef(centre.lat, centre.lon, 0)))
+    : null;
+  let site: LatLon = centre;
+  let siteOffset: IssTransit['siteOffset'] = 'centro';
+  let dist = haversineKm(o.home, centre);
+  if (dist > o.maxTravelKm) {
+    // A linha central fica fora do alcance, mas a faixa (até 2/3 do raio) pode chegar lá.
+    if (!band) return null;
+    const edges = ([['abaixo', band.below], ['acima', band.above]] as const)
+      .map(([k, pt]) => ({ k, pt, d: haversineKm(o.home, pt) })).sort((a, b) => a.d - b.d);
+    if (edges[0].d > o.maxTravelKm) return null;
+    site = edges[0].pt; siteOffset = edges[0].k; dist = edges[0].d;
+  }
+  if (bodyTopo(target, date, site).el < o.minElevDeg) return null;
   const atSite = analyzeAt(sat, target, site, bestT, 8, 0.005);
   const atHome = analyzeAt(sat, target, o.home, bestT, 30, 0.02);
   return {
     id: `${target}-${Math.round(bestT / 1000)}`, target, center: atSite.tMin, site,
-    siteDistKm: dist, siteBearing: bearingDeg(o.home, site), atSite, atHome,
+    siteDistKm: dist, siteBearing: bearingDeg(o.home, site), atSite, atHome, siteOffset, band,
   };
 }

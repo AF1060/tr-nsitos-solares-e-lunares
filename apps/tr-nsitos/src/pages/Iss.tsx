@@ -54,7 +54,7 @@ export default function Iss() {
             <Cell k="No disco" v={`${fmtNum(p.atSite.duration, 2)} s`} />
             <Cell k="Altura · Distância" v={`${fmtNum(p.atSite.bodyEl, 0)}° · ${fmtNum(p.atSite.issRangeKm, 0)} km`} />
             <Cell k="Nuvens · Chuva" v={w ? `${w.cloud}% · ${w.rainProb}%` : '—'} />
-            <Cell k="Local ideal" v={`${fmtNum(p.siteDistKm, 1)} km para ${compass(p.siteBearing)}`} />
+            <Cell k={p.siteOffset === 'centro' ? 'Local ideal' : `Local (${p.siteOffset} do centro)`} v={`${fmtNum(p.siteDistKm, 1)} km para ${compass(p.siteBearing)}`} />
             <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
               <span className={cn('mr-1 rounded-md px-2 py-1 text-xs font-medium', q.label === 'Excelente' ? 'bg-primary text-primary-foreground' : q.label === 'Boa' ? 'bg-secondary' : 'border border-border text-muted-foreground')}>{q.label}</span>
               <Button size="icon" variant="ghost" title="Calendário" onClick={() => exportPass(p, settings.issAlertMinutes)}><CalendarPlus className="h-4 w-4" /></Button>

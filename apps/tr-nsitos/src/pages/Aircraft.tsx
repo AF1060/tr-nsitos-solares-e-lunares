@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext';
 import { useAircraft, RADAR_KM } from '../context/AircraftContext';
 import { planeAt, planePolar, planeTrack, PlanePrediction } from '../lib/aircraft';
 import { compass } from '../lib/geo';
+import { OFFSET_FRAC } from '../lib/offset';
 import { Navigation } from 'lucide-react';
 import { bodyTopo, fieldOfView } from '../lib/astro';
 import { fmtCoord, fmtIn, fmtNum, fmtTime, mapsUrl } from '../lib/format';
@@ -61,7 +62,7 @@ export default function Aircraft() {
                 {p.entry ? `No seu local: passa a ${fmtNum(p.minSep, 2)}° do centro · ${fmtNum(p.inDiscS, 1)} s no disco · confiança ${p.confidence}` : `No seu local não passa frente ${discName}; só num dos locais abaixo`}
               </div>
               {p.alternatives[0] && (
-                <div className="mt-1 text-xs">Centro do disco: {fmtNum(p.alternatives[0].distKm, 1)} km para {compass(p.alternatives[0].brg)} às {fmtTime(p.alternatives[0].t)}{p.alternatives.length > 1 ? ` · +${p.alternatives.length - 1} locais` : ''}</div>
+                <div className="mt-1 text-xs">Centro do disco: {fmtNum(p.alternatives[0].distKm, 1)} km para {compass(p.alternatives[0].brg)} às {fmtTime(p.alternatives[0].t)}{p.alternatives.length > 1 ? ` · +${p.alternatives.length - 1} locais` : ''}{p.alternatives[0].band ? ` · faixa de ± ${fmtNum(p.alternatives[0].band.halfWidthM, 0)} m` : ''}</div>
               )}
             </button>
           ))}
@@ -156,13 +157,19 @@ function PlaneDetail({ p, onClose }: { p: PlanePrediction | null; onClose: () =>
             <DiscDiagram target={target} radiusDeg={p.radiusDeg} marginDeg={settings.marginDegrees} frame={frame} track={track} entry={p.entry} errDeg={p.errDeg} />
             <p className="text-xs text-muted-foreground">A faixa vermelha mostra a incerteza da trajetória prevista.</p>
             <div className="space-y-2">
-              <div className="text-sm font-medium">Locais para o avião passar no centro do disco (até {settings.maxTravelKm} km)</div>
+              <div className="text-sm font-medium">Locais para a passagem (até {settings.maxTravelKm} km): centro do disco e faixa até {fmtNum(OFFSET_FRAC * 100, 0)} % do raio</div>
               {p.alternatives.length === 0 && <div className="text-sm text-muted-foreground">A linha central não passa a menos de {settings.maxTravelKm} km.</div>}
               {p.alternatives.map((a, i) => (
                 <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3 text-sm">
                   <div>
                     <div className="font-semibold">{fmtNum(a.distKm, 1)} km para {compass(a.brg)}</div>
                     <div className="text-xs text-muted-foreground">{fmtCoord(a.lat, a.lon)} · às {fmtTime(a.t)} (± {fmtNum(p.errS, 0)} s)</div>
+                    {a.band && (
+                      <div className="mt-1 text-xs">
+                        Faixa utilizável: ± {fmtNum(a.band.halfWidthM, 0)} m. Para o avião passar na parte de baixo do disco, desloque-se até {fmtNum(a.band.halfWidthM, 0)} m para {compass(a.band.belowBrg)}; para a parte de cima, para {compass((a.band.belowBrg + 180) % 360)}.
+                        {' '}No disco: {fmtNum(a.band.discCentreS, 1)} s no centro · {fmtNum(a.band.discEdgeS, 1)} s no limite da faixa.
+                      </div>
+                    )}
                   </div>
                   <Button size="sm" variant="outline" asChild><a href={mapsUrl(a.lat, a.lon)} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-4 w-4" />Mapa</a></Button>
                 </div>
