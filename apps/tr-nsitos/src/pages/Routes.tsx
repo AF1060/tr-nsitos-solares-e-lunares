@@ -1,147 +1,198 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Loader2, Navigation } from 'lucide-react';
+import { BarChart3, Loader2, Navigation, Sun, Moon } from 'lucide-react';
 import { getSightingStats, GetSightingStatsOutputType } from 'zitejs/api';
 import { Button } from '@project/components/ui/button';
 import { DatePicker } from '@project/components/ui/date-picker';
 import { cn } from '@project/components/lib/utils';
 import { useApp } from '../context/AppContext';
-import { bodyTopo } from '../lib/astro';
-import { bearingDeg, compass, destination, haversineKm } from '../lib/geo';
-import { lisbonParts } from '../lib/sightings';
+import type { Target } from '../lib/astro';
+import { compass } from '../lib/geo';
 import { fmtCoord, fmtNum, mapsUrl } from '../lib/format';
+import { analyse, bestZone, scoreDay, lisbonDayStart, fmtMinute, CELL, RADIUS, WEEKDAYS_SHORT, Mode, Cell, Zone, DayScore } from '../lib/routeStats';
 
-type Row = GetSightingStatsOutputType['rows'][0];
-const R = 50, CELL = 2.5; // km
-const WD = ['segundas', 'terças', 'quartas', 'quintas', 'sextas', 'sábados', 'domingos'];
-
-interface Cell { lat: number; lon: number; w: number; hours: Record<number, number>; airlines: Record<string, number> }
-
-function analyse(rows: Row[], day: Date, home: { lat: number; lon: number }, target: 'Sol' | 'Lua', minEl: number) {
-  const days = new Set(rows.map((r) => r.day)).size || 1;
-  const cells = new Map<string, Cell>();
-  const kmLat = 111, kmLon = 111 * Math.cos((home.lat * Math.PI) / 180);
-  const base = new Date(day); base.setHours(0, 0, 0, 0);
-  for (const r of rows) {
-    const t = new Date(base.getTime() + r.minuteOfDay * 60000);
-    const b = bodyTopo(target, t, home);
-    if (b.el < minEl) continue;
-    const back = (b.az + 180) % 360, d = r.altitudeM / 1000 / Math.tan((b.el * Math.PI) / 180);
-    if (d > 300) continue;
-    const seen = new Set<string>();
-    for (let s = -150; s <= 150; s += 10) {
-      const p = destination({ lat: r.latitude, lon: r.longitude }, r.track, (r.speed * s) / 1000);
-      const o = destination(p, back, d);
-      if (haversineKm(home, o) > R) continue;
-      const ix = Math.floor(((o.lon - home.lon) * kmLon) / CELL), iy = Math.floor(((o.lat - home.lat) * kmLat) / CELL);
-      const k = `${ix},${iy}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      const c = cells.get(k) ?? { lat: home.lat + ((iy + 0.5) * CELL) / kmLat, lon: home.lon + ((ix + 0.5) * CELL) / kmLon, w: 0, hours: {}, airlines: {} };
-      c.w += 1 / days;
-      const h = Math.floor(r.minuteOfDay / 60);
-      c.hours[h] = (c.hours[h] ?? 0) + 1;
-      c.airlines[r.airline] = (c.airlines[r.airline] ?? 0) + 1;
-      cells.set(k, c);
-    }
-  }
-  return { cells: [...cells.values()].sort((a, b) => b.w - a.w), days };
-}
+const pct = (p: number) => `${fmtNum(p * 100, 0)} %`;
+const DAY_MS = 86_400_000;
 
 export default function Routes() {
   const { home, target, settings } = useApp();
+  const [body, setBody] = useState<Target>(target);
   const [day, setDay] = useState(new Date());
-  const [weekly, setWeekly] = useState(false);
+  const [mode, setMode] = useState<Mode>('semanal');
   const [data, setData] = useState<GetSightingStatsOutputType | null>(null);
   const [loading, setLoading] = useState(true);
-  const wd = lisbonParts(day).weekday;
+  const [cal, setCal] = useState<DayScore[]>([]);
+  const reach = settings.maxTravelKm, minEl = settings.minElevationDegrees;
 
+  useEffect(() => setBody(target), [target]);
   useEffect(() => {
-    setLoading(true);
-    getSightingStats({ minFrom: 0, minTo: 1439, weekday: weekly ? wd : null })
-      .then(setData).catch(() => setData(null)).finally(() => setLoading(false));
-  }, [weekly, wd]);
+    getSightingStats({ minFrom: 0, minTo: 1439, weekday: null }).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, []);
 
-  const res = useMemo(() => (data ? analyse(data.rows, day, home, target, settings.minElevationDegrees) : null), [data, day, home, target, settings.minElevationDegrees]);
-  const max = res?.cells[0]?.w ?? 1;
-  const airlines = useMemo(() => {
-    const m = new Map<string, Set<string>>();
-    data?.rows.forEach((r) => { const s = m.get(r.airline) ?? new Set(); s.add(`${r.callsign}|${r.day}`); m.set(r.airline, s); });
-    const d = res?.days ?? 1;
-    return [...m.entries()].map(([a, s]) => ({ a, perDay: s.size / d })).sort((x, y) => y.perDay - x.perDay).slice(0, 8);
-  }, [data, res]);
-  const per = weekly ? `por ${WD[wd].slice(0, -1)}` : 'por dia';
+  const analysis = useMemo(() => (data ? analyse(data.rows, day, home, body, minEl, mode) : null), [data, day, home, body, minEl, mode]);
+  const zone = useMemo(() => (analysis ? bestZone(analysis, home, reach, body) : null), [analysis, home, reach, body]);
+
+  // Calendário dos próximos 30 dias, calculado aos poucos para não bloquear a página.
+  useEffect(() => {
+    if (!data) return;
+    let stop = false;
+    setCal([]);
+    (async () => {
+      const t0 = lisbonDayStart(new Date());
+      const out: DayScore[] = [];
+      for (let i = 0; i < 30 && !stop; i++) {
+        await new Promise((r) => setTimeout(r, 0));
+        out.push(scoreDay(data.rows, new Date(t0 + i * DAY_MS + 12 * 3600_000), home, minEl, mode, reach));
+        if (!stop) setCal([...out]);
+      }
+    })();
+    return () => { stop = true; };
+  }, [data, home, minEl, mode, reach]);
+
+  const key = body === 'Sol' ? 'sol' : 'lua';
+  const best = useMemo(() => [...cal].sort((a, b) => b[key] - a[key]).filter((d) => d[key] > 0).slice(0, 3), [cal, key]);
+  const name = body === 'Sol' ? 'o Sol' : 'a Lua';
+  const selStart = lisbonDayStart(day);
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><BarChart3 className="h-6 w-6 text-primary" />Rotas · zonas prováveis</h1>
-        <p className="text-sm text-muted-foreground">Onde os aviões habituais passam mais vezes frente {target === 'Sol' ? 'ao Sol' : 'à Lua'}, a partir das observações guardadas</p>
+        <p className="text-sm text-muted-foreground">Onde e a que horas os voos habituais mais provavelmente se alinham com {name}, assumindo que mantêm a frequência semanal.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="w-56"><DatePicker value={day} onChange={(d) => d && setDay(d)} /></div>
         <div className="flex rounded-full border border-border p-0.5 text-sm">
-          {[[false, 'Todos os dias'], [true, `Só às ${WD[wd]}`]].map(([k, l]) => (
-            <button key={String(k)} onClick={() => setWeekly(k as boolean)} className={cn('rounded-full px-3 py-1', weekly === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>{l as string}</button>
+          {(['Sol', 'Lua'] as const).map((t) => (
+            <button key={t} onClick={() => setBody(t)} className={cn('flex items-center gap-1.5 rounded-full px-3 py-1', body === t ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
+              {t === 'Sol' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}{t}
+            </button>
+          ))}
+        </div>
+        <div className="flex rounded-full border border-border p-0.5 text-sm">
+          {([['semanal', 'Semanal'], ['diario', 'Qualquer dia']] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setMode(k)} className={cn('rounded-full px-3 py-1', mode === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>{l}</button>
           ))}
         </div>
       </div>
 
       {data && (
         <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-          {data.totalSightings} observações em {data.daysObserved} dias{data.firstDay ? ` desde ${data.firstDay}` : ''}. Os dados são recolhidos enquanto o separador Aviões está aberto: quanto mais tempo o deixar aberto, a horas diferentes, melhor a estatística.
-          {data.daysObserved < 7 && ' Ainda há poucos dias de dados: os resultados são indicativos.'}
+          {data.totalSightings} observações em {data.daysObserved} dia(s){data.firstDay ? ` desde ${data.firstDay}` : ''}.
+          {mode === 'semanal' ? ' Modo semanal: só contam os voos vistos no mesmo dia da semana da data escolhida.' : ' Modo "qualquer dia": contam todos os voos vistos, em qualquer dia.'}
+          {' '}Os dados só são recolhidos enquanto o separador Aviões está aberto; quantas mais semanas e horas diferentes, mais fiável.
+          {data.daysObserved < 14 && ' Ainda há poucos dias de dados: as probabilidades são indicativas.'}
+          {data.truncated && ' Atenção: só foram usadas as 10 000 observações mais recentes.'}
         </div>
       )}
 
-      {loading ? <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />A calcular…</div> : !res || res.cells.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">Ainda não há dados suficientes para este dia/alvo. Abra o separador Aviões durante as horas em que {target === 'Sol' ? 'o Sol' : 'a Lua'} está alto para começar a recolher.</div>
-      ) : (
-        <div className="grid gap-5 lg:grid-cols-3">
-          <div className="rounded-xl border border-border bg-card p-3 lg:col-span-2">
-            <HeatMap cells={res.cells} max={max} home={home} />
-            <div className="mt-2 text-xs text-muted-foreground">Cada quadrado tem {CELL} km. Cor mais forte = mais cruzamentos esperados {per}. ✚ = você · anéis de 10 km.</div>
-          </div>
-          <div className="space-y-3">
-            <div className="text-sm font-medium">Melhores zonas</div>
-            {res.cells.slice(0, 5).map((c, i) => {
-              const hrs = Object.entries(c.hours).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h]) => `${h.padStart(2, '0')}h`).join(', ');
-              const al = Object.entries(c.airlines).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([a]) => a).join(', ');
-              return (
-                <div key={i} className="rounded-lg border border-border bg-card p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{fmtNum(haversineKm(home, c), 1)} km para {compass(bearingDeg(home, c))}</span>
-                    <Button size="sm" variant="outline" asChild><a href={mapsUrl(c.lat, c.lon)} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-3.5 w-3.5" />Mapa</a></Button>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{fmtCoord(c.lat, c.lon)}</div>
-                  <div className="mt-1 text-xs">≈ {fmtNum(c.w, 1)} cruzamentos {per} · melhores horas {hrs}</div>
-                  <div className="text-xs text-muted-foreground">Companhias: {al}</div>
-                </div>
-              );
-            })}
-            <div className="rounded-lg border border-border bg-card p-3 text-sm">
-              <div className="mb-1 font-medium">Companhias mais frequentes ({per})</div>
-              {airlines.map((x) => <div key={x.a} className="flex justify-between text-xs"><span>{x.a}</span><span className="tabular-nums">{fmtNum(x.perDay, 1)} voos</span></div>)}
+      {loading ? <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />A calcular…</div> : (
+        <>
+          <div className="rounded-xl border border-border bg-card p-3">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+              <div className="text-sm font-medium">Próximos 30 dias · melhor zona alcançável ({settings.maxTravelKm} km)</div>
+              {best.length > 0 && <div className="text-xs text-muted-foreground">Melhores dias para {name}: {best.map((d) => `${new Date(d.start).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', timeZone: 'Europe/Lisbon' })} (${WEEKDAYS_SHORT[d.weekday]}, ${pct(d[key])})`).join(' · ')}</div>}
             </div>
-            <p className="text-xs text-muted-foreground">Assume que os voos repetem os mesmos horários e rotas. A posição {target === 'Sol' ? 'do Sol' : 'da Lua'} é a do dia escolhido, por isso as zonas mudam ao longo do ano.</p>
+            <div className="flex gap-1 overflow-x-auto pb-1">
+              {cal.map((d) => {
+                const dt = new Date(d.start);
+                const sel = d.start === selStart;
+                return (
+                  <button key={d.start} onClick={() => setDay(new Date(d.start + 12 * 3600_000))} className={cn('flex w-12 shrink-0 flex-col items-center rounded-md border p-1 text-[10px]', sel ? 'border-primary bg-primary/10' : 'border-border')}>
+                    <span className="text-muted-foreground">{WEEKDAYS_SHORT[d.weekday]}</span>
+                    <span className="font-medium">{dt.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Lisbon' })}</span>
+                    <div className="mt-1 flex h-10 items-end gap-0.5">
+                      <div className="w-2 rounded-sm bg-amber-400" style={{ height: `${Math.max(2, d.sol * 100)}%`, opacity: body === 'Sol' ? 1 : 0.35 }} title={`Sol ${pct(d.sol)}`} />
+                      <div className="w-2 rounded-sm bg-sky-300" style={{ height: `${Math.max(2, d.lua * 100)}%`, opacity: body === 'Lua' ? 1 : 0.35 }} title={`Lua ${pct(d.lua)}`} />
+                    </div>
+                    <span className="tabular-nums">{pct(d[key])}</span>
+                  </button>
+                );
+              })}
+              {cal.length < 30 && <div className="flex items-center px-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /></div>}
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground"><span className="text-amber-400">■</span> Sol · <span className="text-sky-300">■</span> Lua. Altura da barra = probabilidade de pelo menos um voo regular se alinhar na melhor zona.</div>
           </div>
-        </div>
+
+          {!analysis || !zone ? (
+            <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+              Ainda não há dados suficientes para este dia/alvo dentro do alcance de {reach} km. Abra o separador Aviões durante as horas em que {name} está alto para começar a recolher{mode === 'semanal' ? ', ou experimente "Qualquer dia"' : ''}.
+            </div>
+          ) : (
+            <div className="grid gap-5 lg:grid-cols-3">
+              <div className="rounded-xl border border-border bg-card p-3 lg:col-span-2">
+                <HeatMap cells={analysis.cells} zone={zone} home={home} reach={reach} />
+                <div className="mt-2 text-xs text-muted-foreground">Quadrados de {CELL} km: cor mais forte = maior probabilidade. Círculo a cheio = zona recomendada · tracejado = alcance máximo · ✚ = você · anéis de 10 km.</div>
+              </div>
+              <div className="space-y-3">
+                <div className="rounded-lg border border-primary/50 bg-card p-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">Zona recomendada</span>
+                    <Button size="sm" variant="outline" asChild><a href={mapsUrl(zone.lat, zone.lon)} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-3.5 w-3.5" />Mapa</a></Button>
+                  </div>
+                  <div className="mt-1">{fmtNum(zone.distKm, 1)} km para {compass(zone.bearing)} · raio ≈ {fmtNum(zone.radiusKm, 1)} km</div>
+                  <div className="text-xs text-muted-foreground">{fmtCoord(zone.lat, zone.lon)}</div>
+                  <div className="mt-2 text-2xl font-semibold text-primary">{pct(zone.p)}</div>
+                  <div className="text-xs text-muted-foreground">probabilidade de pelo menos um alinhamento com {name} nesse dia</div>
+                </div>
+
+                <HourChart zone={zone} />
+
+                <div className="rounded-lg border border-border bg-card p-3 text-sm">
+                  <div className="mb-1 font-medium">Voos que alinham nesta zona</div>
+                  {zone.flights.slice(0, 10).map((f) => (
+                    <div key={f.callsign} className="flex justify-between gap-2 text-xs">
+                      <span><span className="font-medium tabular-nums">{fmtMinute(f.minute)}</span> · {f.callsign} <span className="text-muted-foreground">({f.airline})</span></span>
+                      <span className="text-right text-muted-foreground">visto {f.seen}/{f.cover} · {pct(f.p)} · {fmtNum(f.el, 0)}°</span>
+                    </div>
+                  ))}
+                  <div className="mt-1 text-[11px] text-muted-foreground">"visto 2/3" = presente em 2 dos 3 dias com observação a essa hora; % = probabilidade de repetir; ° = altura {body === 'Sol' ? 'do Sol' : 'da Lua'}.</div>
+                </div>
+                <p className="text-xs text-muted-foreground">A zona indica onde o alinhamento é provável, não a posição exata: o trânsito real depende da rota do dia, por isso confirme no separador Aviões (previsão em tempo real com margem de erro). Horas de Lisboa.</p>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-function HeatMap({ cells, max, home }: { cells: Cell[]; max: number; home: { lat: number; lon: number } }) {
+function HourChart({ zone }: { zone: Zone }) {
+  const hrs = zone.hours.map((p, h) => ({ p, h })).filter((x) => x.p > 0);
+  if (!hrs.length) return null;
+  const from = Math.max(0, Math.min(...hrs.map((x) => x.h)) - 1), to = Math.min(23, Math.max(...hrs.map((x) => x.h)) + 1);
+  const cols = zone.hours.slice(from, to + 1);
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 text-sm">
+      <div className="mb-2 font-medium">Melhores horas</div>
+      <div className="flex h-20 items-end gap-1">
+        {cols.map((p, i) => (
+          <div key={i} className="flex flex-1 flex-col items-center justify-end gap-0.5" title={`${String(from + i).padStart(2, '0')}h · ${pct(p)}`}>
+            <div className="w-full rounded-sm bg-primary" style={{ height: `${Math.max(p > 0 ? 6 : 1, p * 100)}%`, opacity: p > 0 ? 1 : 0.2 }} />
+            <span className="text-[9px] text-muted-foreground">{String(from + i).padStart(2, '0')}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HeatMap({ cells, zone, home, reach }: { cells: Cell[]; zone: Zone; home: { lat: number; lon: number }; reach: number }) {
   const kmLon = 111 * Math.cos((home.lat * Math.PI) / 180);
-  const s = 100 / R;
+  const s = 100 / RADIUS;
+  const max = cells[0]?.p || 1;
+  const zx = (zone.lon - home.lon) * kmLon * s, zy = -(zone.lat - home.lat) * 111 * s;
   return (
     <svg viewBox="-108 -108 216 216" className="mx-auto aspect-square max-h-[520px] w-full">
       <circle r={100} fill="hsl(var(--muted))" fillOpacity={0.4} />
       {cells.map((c, i) => {
         const x = (c.lon - home.lon) * kmLon * s, y = -(c.lat - home.lat) * 111 * s;
-        return <rect key={i} x={x - (CELL * s) / 2} y={y - (CELL * s) / 2} width={CELL * s} height={CELL * s} fill="hsl(var(--primary))" fillOpacity={0.1 + 0.85 * (c.w / max)} />;
+        return <rect key={i} x={x - (CELL * s) / 2} y={y - (CELL * s) / 2} width={CELL * s} height={CELL * s} fill="hsl(var(--primary))" fillOpacity={0.1 + 0.85 * (c.p / max)} />;
       })}
       {[10, 20, 30, 40, 50].map((r) => <circle key={r} r={r * s} fill="none" stroke="hsl(var(--border))" strokeWidth={0.4} />)}
+      <circle r={Math.min(reach, RADIUS) * s} fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.6} strokeDasharray="3 2" />
+      <circle cx={zx} cy={zy} r={zone.radiusKm * s} fill="none" stroke="hsl(var(--foreground))" strokeWidth={1.2} />
       {['N', 'E', 'S', 'O'].map((d, i) => { const a = (i * 90 * Math.PI) / 180; return <text key={d} x={Math.sin(a) * 105} y={-Math.cos(a) * 105 + 2} fontSize={5} textAnchor="middle" fill="hsl(var(--muted-foreground))">{d}</text>; })}
       <line x1={-3} x2={3} y1={0} y2={0} stroke="hsl(var(--foreground))" strokeWidth={0.8} />
       <line x1={0} x2={0} y1={-3} y2={3} stroke="hsl(var(--foreground))" strokeWidth={0.8} />

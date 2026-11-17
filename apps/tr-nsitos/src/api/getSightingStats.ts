@@ -9,6 +9,7 @@ export default createEndpoint({
     totalSightings: z.number(),
     daysObserved: z.number(),
     firstDay: z.string().nullable(),
+    truncated: z.boolean(),
     rows: z.array(z.object({
       callsign: z.string(), airline: z.string(), weekday: z.number(), minuteOfDay: z.number(), day: z.string(),
       latitude: z.number(), longitude: z.number(), altitudeM: z.number(), track: z.number(), speed: z.number(),
@@ -27,15 +28,17 @@ export default createEndpoint({
               FROM "AircraftSightings"
               WHERE "owner"->>0 = $1 AND "minuteOfDay" BETWEEN $2 AND $3 AND ($4::int IS NULL OR "weekday" = $4::int)
                 AND "altitudeM" > 1500
-              ORDER BY "seenAt" DESC LIMIT 2000`,
+              ORDER BY "seenAt" DESC LIMIT 10001`,
       params: [context.user.id, input.minFrom, input.minTo, input.weekday],
     });
     const t = totals.rows[0] ?? {};
+    const truncated = r.rows.length > 10000;
     return {
       totalSightings: Number(t.n ?? 0),
       daysObserved: Number(t.days ?? 0),
       firstDay: t.first ? String(t.first) : null,
-      rows: r.rows.map((x) => ({
+      truncated,
+      rows: r.rows.slice(0, 10000).map((x) => ({
         callsign: String(x.callsign ?? ''), airline: String(x.airline ?? ''), weekday: Number(x.weekday), minuteOfDay: Number(x.minuteOfDay), day: String(x.day),
         latitude: Number(x.latitude), longitude: Number(x.longitude), altitudeM: Number(x.altitudeM), track: Number(x.track), speed: Number(x.speed),
       })),
