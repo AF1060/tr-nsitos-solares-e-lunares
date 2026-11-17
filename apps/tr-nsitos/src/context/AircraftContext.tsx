@@ -43,7 +43,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
       }
     };
     void poll();
-    const id = setInterval(poll, 10_000);
+    const id = setInterval(poll, 30_000);
     return () => { alive = false; clearInterval(id); };
   }, [watching, loaded, home]);
 
