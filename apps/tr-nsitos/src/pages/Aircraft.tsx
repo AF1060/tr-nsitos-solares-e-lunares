@@ -15,7 +15,7 @@ import DiscDiagram from '../components/DiscDiagram';
 export default function Aircraft() {
   const { settings, target } = useApp();
   const discName = target === 'Sol' ? 'ao disco solar' : 'ao disco lunar';
-  const { watching, setWatching, predictions, lastUpdate, error, rateLimited, source, planes } = useAircraft();
+  const { watching, setWatching, predictions, lastUpdate, error, source, planes } = useAircraft();
   const [open, setOpen] = useState<PlanePrediction | null>(null);
   const [now, setNow] = useState(Date.now());
   useEffect(() => { setWatching(true); }, [setWatching]);
@@ -33,9 +33,9 @@ export default function Aircraft() {
         </div>
         <Button variant="outline" onClick={() => setWatching(!watching)}>{watching ? <><Pause className="mr-2 h-4 w-4" />Pausar vigia</> : <><Play className="mr-2 h-4 w-4" />Vigiar</>}</Button>
       </div>
-      {(error || rateLimited) && (
+      {error && (
         <div className="flex items-center gap-2 rounded-lg border border-destructive/60 p-3 text-sm text-destructive">
-          <AlertTriangle className="h-4 w-4" />{rateLimited ? 'Limite diário de pedidos da OpenSky atingido. Os dados param até o limite renovar.' : error}
+          <AlertTriangle className="h-4 w-4" />{error}
         </div>
       )}
       <div className="grid gap-5 lg:grid-cols-3">

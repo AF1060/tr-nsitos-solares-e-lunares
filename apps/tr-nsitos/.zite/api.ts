@@ -2,6 +2,7 @@
 
 import { createCaller } from 'zitejs/caller';
 
+import type { default as _CollectSightingsEp } from '../src/api/collectSightings';
 import type { default as _CreatePlannedPassEp } from '../src/api/createPlannedPass';
 import type { default as _DeletePlannedPassEp } from '../src/api/deletePlannedPass';
 import type { default as _GetAircraftEp } from '../src/api/getAircraft';
@@ -11,6 +12,11 @@ import type { default as _GetSightingStatsEp } from '../src/api/getSightingStats
 import type { default as _ListPlannedPassesEp } from '../src/api/listPlannedPasses';
 import type { default as _LogSightingsEp } from '../src/api/logSightings';
 import type { default as _SaveSettingsEp } from '../src/api/saveSettings';
+
+type _CollectSightingsCfg = typeof _CollectSightingsEp;
+export type CollectSightingsInputType = NonNullable<_CollectSightingsCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_CollectSightingsCfg['execute']>[0]['input'];
+export type CollectSightingsOutputType = Awaited<ReturnType<_CollectSightingsCfg['execute']>>;
+export const collectSightings = createCaller<CollectSightingsInputType, CollectSightingsOutputType>('collectSightings');
 
 type _CreatePlannedPassCfg = typeof _CreatePlannedPassEp;
 export type CreatePlannedPassInputType = NonNullable<_CreatePlannedPassCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_CreatePlannedPassCfg['execute']>[0]['input'];
@@ -59,6 +65,7 @@ export const saveSettings = createCaller<SaveSettingsInputType, SaveSettingsOutp
 
 
 export const api = {
+  collectSightings,
   createPlannedPass,
   deletePlannedPass,
   getAircraft,
