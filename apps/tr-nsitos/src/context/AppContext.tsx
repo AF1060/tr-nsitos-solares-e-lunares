@@ -113,8 +113,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .catch(() => toast.error('Não foi possível ler as definições'))
       .finally(() => setLoaded(true));
     getIssTle({})
-      .then((t) => { setSat(makeSat(t.line1, t.line2)); setTleAt(t.fetchedAt); })
-      .catch(() => setIss((s) => ({ ...s, status: 'error', error: 'Não foi possível obter os dados orbitais da ISS' })));
+      .then((t) => {
+        localStorage.setItem('issTle', JSON.stringify(t));
+        setSat(makeSat(t.line1, t.line2)); setTleAt(t.fetchedAt);
+      })
+      .catch(() => {
+        // Usa os últimos dados guardados no telemóvel (válidos alguns dias)
+        const saved = localStorage.getItem('issTle');
+        const t = saved ? (JSON.parse(saved) as { line1: string; line2: string; fetchedAt: number }) : null;
+        if (t && Date.now() - t.fetchedAt < 5 * 86400_000) {
+          setSat(makeSat(t.line1, t.line2)); setTleAt(t.fetchedAt);
+          toast.warning('Fontes orbitais indisponíveis: a usar os últimos dados guardados');
+        } else {
+          setIss((s) => ({ ...s, status: 'error', error: 'Os servidores de dados orbitais da ISS não responderam. Tente mais tarde.' }));
+        }
+      });
   }, []);
 
   useEffect(() => {
