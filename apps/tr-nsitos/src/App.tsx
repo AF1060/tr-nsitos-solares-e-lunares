@@ -1,3 +1,4 @@
+import MilkyWay from './pages/MilkyWay';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { useAuth } from 'zitejs/auth';
 import { AppProvider } from './context/AppContext';
@@ -22,6 +23,7 @@ export default function App() {
               <Route path="/" element={<Now />} />
               <Route path="/avioes" element={<Aircraft />} />
               <Route path="/iss" element={<Iss />} />
+              <Route path="/via-lactea" element={<MilkyWay />} />
               <Route path="/definicoes" element={<SettingsPage />} />
             </Route>
           </Routes>
