@@ -6,6 +6,7 @@ import { DatePicker } from '@project/components/ui/date-picker';
 import { useApp } from '../context/AppContext';
 import { BAND, darkness, galHor, nightWindow, skyState } from '../lib/milkyway';
 import { bodyTopo } from '../lib/astro';
+import MilkyPanorama from '../components/MilkyPanorama';
 import { compass } from '../lib/geo';
 import { fmtHM, fmtNum } from '../lib/format';
 
@@ -41,6 +42,8 @@ export default function MilkyWay() {
         <Card k="Noite astronómica" v={night.darkFrom ? `${fmtHM(night.darkFrom)} – ${fmtHM(night.darkTo)}` : 'Sem noite escura'} />
         <Card k="Lua" v={`${fmtNum(s.moonIllum * 100, 0)}% iluminada`} sub={s.moon > 0 ? `acima do horizonte às ${fmtHM(t)} — atrapalha` : `abaixo do horizonte às ${fmtHM(t)}`} />
       </div>
+
+      <MilkyPanorama t={t} bestAz={night.best?.az ?? null} />
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-3 lg:col-span-2">
