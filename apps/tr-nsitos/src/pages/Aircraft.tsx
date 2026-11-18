@@ -4,7 +4,7 @@ import { Button } from '@project/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@project/components/ui/dialog';
 import { cn } from '@project/components/lib/utils';
 import { useApp } from '../context/AppContext';
-import { useAircraft, RADAR_KM } from '../context/AircraftContext';
+import { useAircraft, RADAR_KM, STALE_MS } from '../context/AircraftContext';
 import { planeAt, planePolar, planeTrack, PlanePrediction } from '../lib/aircraft';
 import { compass } from '../lib/geo';
 import { Navigation } from 'lucide-react';
@@ -15,7 +15,7 @@ import DiscDiagram from '../components/DiscDiagram';
 export default function Aircraft() {
   const { settings, target } = useApp();
   const discName = target === 'Sol' ? 'ao disco solar' : 'ao disco lunar';
-  const { watching, setWatching, predictions, lastUpdate, error, source, planes } = useAircraft();
+  const { watching, setWatching, predictions, lastUpdate, error, source, planes, paused } = useAircraft();
   const [open, setOpen] = useState<PlanePrediction | null>(null);
   const [now, setNow] = useState(Date.now());
   useEffect(() => { setWatching(true); }, [setWatching]);
@@ -27,12 +27,17 @@ export default function Aircraft() {
         <div>
           <h1 className="text-2xl font-semibold">Aviões · {RADAR_KM} km</h1>
           <p className="text-sm text-muted-foreground">
-            {lastUpdate ? `Atualizado há ${Math.round((now - lastUpdate) / 1000)} s · ${planes.length} aviões` : watching ? 'A obter dados…' : 'Vigia em pausa'}
+            {paused && watching ? 'Radar em pausa: o separador está em segundo plano (retoma ao voltar)' : lastUpdate ? `Atualizado há ${Math.round((now - lastUpdate) / 1000)} s · ${planes.length} aviões` : watching ? 'A obter dados…' : 'Vigia em pausa'}
             {source ? ` · fonte: ${source}` : ''}
           </p>
         </div>
         <Button variant="outline" onClick={() => setWatching(!watching)}>{watching ? <><Pause className="mr-2 h-4 w-4" />Pausar vigia</> : <><Play className="mr-2 h-4 w-4" />Vigiar</>}</Button>
       </div>
+      {watching && !paused && lastUpdate !== null && now - lastUpdate > STALE_MS && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
+          <AlertTriangle className="h-4 w-4" />Dados com mais de {Math.round(STALE_MS / 60000)} min: previsões suspensas até haver nova atualização.
+        </div>
+      )}
       {error && (
         <div className="flex items-center gap-2 rounded-lg border border-destructive/60 p-3 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4" />{error}
