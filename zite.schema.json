@@ -202,6 +202,32 @@
               "defaultValue": true
             }
           }
+        },
+        {
+          "id": "fshrtJXaFyq",
+          "sdkName": "aircraftOffsetPercent",
+          "definition": {
+            "name": "Aircraft Offset Percent",
+            "type": "number",
+            "template": {
+              "defaultValue": 80,
+              "numberFormat": "local",
+              "decimalPlaces": 0
+            }
+          }
+        },
+        {
+          "id": "fjAz6xRAVsQ",
+          "sdkName": "issOffsetPercent",
+          "definition": {
+            "name": "ISS Offset Percent",
+            "type": "number",
+            "template": {
+              "defaultValue": 67,
+              "numberFormat": "local",
+              "decimalPlaces": 0
+            }
+          }
         }
       ]
     },

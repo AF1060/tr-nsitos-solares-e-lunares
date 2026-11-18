@@ -20,6 +20,8 @@ export default createEndpoint({
         issAlertMinutes: z.number(),
         aircraftAlertSeconds: z.number(),
         voiceAlerts: z.boolean(),
+        aircraftOffsetPercent: z.number(),
+        issOffsetPercent: z.number(),
       })
       .nullable(),
   }),
@@ -40,6 +42,8 @@ export default createEndpoint({
         issAlertMinutes: r.issAlertMinutes ?? 15,
         aircraftAlertSeconds: r.aircraftAlertSeconds ?? 60,
         voiceAlerts: r.voiceAlerts ?? true,
+        aircraftOffsetPercent: r.aircraftOffsetPercent ?? 80,
+        issOffsetPercent: r.issOffsetPercent ?? 67,
       },
     };
   },

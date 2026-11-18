@@ -88,7 +88,7 @@ function Body({ p }: { p: IssTransit }) {
             <Info k="No seu local" v={p.atHome.minSep <= p.atHome.radiusDeg ? `${fmtNum(p.atHome.minSep, 2)}° do centro (no disco)` : `${fmtNum(p.atHome.minSep, 2)}° do centro (falha)`} />
             <Info k="Verificação no local sugerido" v={`${fmtNum(p.atSite.minSep, 3)}° do centro ${p.atSite.minSep < 0.02 ? '✓' : ''}`} />
             <Info k="Nuvens · chuva" v={w ? `${w.cloud}% · ${w.rainProb}%` : 'Sem previsão'} />
-            {p.band && <Info k="Faixa utilizável" v={`${fmtNum(p.band.halfWidthM / 500, 1)} km de largura (2/3 abaixo a 2/3 acima do centro) · ${fmtNum(p.band.discCentreS, 2)} s no centro, ${fmtNum(p.band.discEdgeS, 2)} s nos limites`} />}
+            {p.band && <Info k="Faixa utilizável" v={`${fmtNum(p.band.halfWidthM / 500, 1)} km de largura (${fmtNum(p.band.frac * 100, 0)} % do raio abaixo a ${fmtNum(p.band.frac * 100, 0)} % acima do centro) · ${fmtNum(p.band.discCentreS, 2)} s no centro, ${fmtNum(p.band.discEdgeS, 2)} s nos limites`} />}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild><a href={mapsUrl(p.site.lat, p.site.lon)} target="_blank" rel="noreferrer"><Navigation className="mr-2 h-4 w-4" />Abrir no mapa</a></Button>
@@ -98,7 +98,7 @@ function Body({ p }: { p: IssTransit }) {
         </div>
         <div className="space-y-2">
           <iframe title="Mapa" className="h-56 w-full rounded-lg border border-border" src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${p.site.lat},${p.site.lon}`} />
-          <div className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{p.siteOffset === 'centro' ? 'Local ideal na linha central do trânsito' : `Local no limite ${p.siteOffset === 'abaixo' ? 'inferior' : 'superior'} da faixa (passagem a 2/3 do raio ${p.siteOffset === 'abaixo' ? 'abaixo' : 'acima'} do centro); a linha central fica fora do alcance`}</div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{p.siteOffset === 'centro' ? 'Local ideal na linha central do trânsito' : `Local no limite ${p.siteOffset === 'abaixo' ? 'inferior' : 'superior'} da faixa (passagem a ${fmtNum((p.band?.frac ?? 0) * 100, 0)} % do raio ${p.siteOffset === 'abaixo' ? 'abaixo' : 'acima'} do centro); a linha central fica fora do alcance`}</div>
         </div>
       </div>
       <div className="space-y-3">

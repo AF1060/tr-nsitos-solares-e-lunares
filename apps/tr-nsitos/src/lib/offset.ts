@@ -1,9 +1,11 @@
 import { DEG, Vec, LatLon, sub, norm, dot, cross, len, rayEarth, ecefToGeodetic, haversineKm, bearingDeg } from './geo';
 
-/** Fração do raio do disco até à qual uma passagem ainda é boa para fotografar (2/3). */
+/** Fração do raio do disco até à qual uma passagem ainda é boa para fotografar (por omissão 2/3). */
 export const OFFSET_FRAC = 2 / 3;
 
 export interface OffsetBand {
+  /** Fração do raio do disco usada (0–1). */
+  frac: number;
   /** Ponto do chão onde o objeto passa no centro do disco. */
   centre: LatLon;
   /** Ponto onde o objeto passa a OFFSET_FRAC do raio ABAIXO do centro (mais perto do horizonte). */
@@ -46,7 +48,7 @@ export function offsetBand(pe: Vec, vel: Vec, be: Vec, radiusDeg: number, up: Ve
   const angSpeed = speed / len(sub(pe, gc)); // rad/s
   const r = radiusDeg * DEG;
   return {
-    centre, below, above,
+    frac, centre, below, above,
     halfWidthM: ((haversineKm(centre, below) + haversineKm(centre, above)) / 2) * 1000,
     belowBrg: bearingDeg(centre, below),
     discCentreS: (2 * r) / angSpeed,

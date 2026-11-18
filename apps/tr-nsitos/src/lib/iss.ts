@@ -82,7 +82,7 @@ export interface IssTransit {
   siteBearing: number;
   atSite: Analysis;
   atHome: Analysis;
-  /** centro = linha central; abaixo/acima = limite da faixa (passagem a 2/3 do raio do centro). */
+  /** centro = linha central; abaixo/acima = limite da faixa (passagem dentro da fração escolhida do raio do centro). */
   siteOffset: 'centro' | 'abaixo' | 'acima';
   band: OffsetBand | null;
 }
@@ -91,6 +91,8 @@ export interface SearchOptions {
   home: LatLon;
   maxTravelKm: number;
   minElevDeg: number;
+  /** Fração do raio do disco (0–1) até à qual a passagem ainda serve. */
+  offsetFrac?: number;
   days: number;
   onProgress?: (p: number) => void;
 }
@@ -146,13 +148,13 @@ function refine(sat: SatRec, target: Target, o: SearchOptions, he: Vec, t0: numb
   const date = new Date(bestT);
   const i0 = issEcef(sat, date), i1 = issEcef(sat, new Date(bestT + 1000));
   const band = i0 && i1
-    ? offsetBand(i0, sub(i1, i0), bodyEcefKm(target, date), bodyTopo(target, date, centre).radiusDeg, norm(geodeticToEcef(centre.lat, centre.lon, 0)))
+    ? offsetBand(i0, sub(i1, i0), bodyEcefKm(target, date), bodyTopo(target, date, centre).radiusDeg, norm(geodeticToEcef(centre.lat, centre.lon, 0)), o.offsetFrac)
     : null;
   let site: LatLon = centre;
   let siteOffset: IssTransit['siteOffset'] = 'centro';
   let dist = haversineKm(o.home, centre);
   if (dist > o.maxTravelKm) {
-    // A linha central fica fora do alcance, mas a faixa (até 2/3 do raio) pode chegar lá.
+    // A linha central fica fora do alcance, mas a faixa escolhida pode chegar lá.
     if (!band) return null;
     const edges = ([['abaixo', band.below], ['acima', band.above]] as const)
       .map(([k, pt]) => ({ k, pt, d: haversineKm(o.home, pt) })).sort((a, b) => a.d - b.d);

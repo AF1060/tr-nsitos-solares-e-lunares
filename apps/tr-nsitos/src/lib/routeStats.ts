@@ -49,7 +49,7 @@ export interface Analysis { cells: Cell[]; flights: number; start: number; weekd
 /**
  * Para cada voo habitual projeta a trajetória e calcula os pontos do chão de onde ele se alinharia com o
  * Sol/Lua. A probabilidade de cada voo operar nesse dia é (dias em que foi visto + 0,5) / (dias em que
- * havia observação a essa hora + 1), para não penalizar voos só porque a app esteve fechada.
+ * havia observação a essa hora + 2), para não penalizar voos só porque a app esteve fechada.
  * A probabilidade de uma zona é a de haver pelo menos um voo alinhado: 1 − Π(1 − p).
  */
 export function analyse(rows: SRow[], date: Date, home: LatLon, body: Target, minEl: number, mode: Mode): Analysis {
@@ -81,7 +81,7 @@ export function analyse(rows: SRow[], date: Date, home: LatLon, body: Target, mi
     const seen = new Set(fr.map((r) => r.day)).size;
     const hour = Math.floor(median(fr.map((r) => r.minuteOfDay)) / 60);
     const cov = Math.max(seen, cover.get(hour)?.size ?? seen);
-    const p = Math.min(0.95, (seen + 0.5) / (cov + 1));
+    const p = Math.min(0.95, (seen + 0.5) / (cov + 2)); // prudente com poucos dias: 1/1 → 50 %, 3/3 → 70 %, 7/7 → 83 %
     const reps = new Map<number, SRow>();
     for (const r of fr) { const b = Math.floor(r.minuteOfDay / 5); if (!reps.has(b)) reps.set(b, r); }
 
@@ -166,4 +166,32 @@ export function scoreDay(rows: SRow[], date: Date, home: LatLon, minEl: number, 
     out[t === 'Sol' ? 'sol' : 'lua'] = bestZone(a, home, reach, t)?.p ?? 0;
   }
   return out;
+}
+
+export interface HourProfile {
+  /** Nº esperado de voos que alinham em cada hora (0–23), em toda a área alcançável. */
+  expected: number[];
+  /** Probabilidade de pelo menos um alinhamento em cada hora. */
+  prob: number[];
+}
+
+/**
+ * Perfil horário: para cada voo conta-se uma só vez, na hora mediana em que alinha
+ * (dentro de `reach` km de casa), e somam-se as probabilidades de repetição.
+ */
+export function hourProfile(a: Analysis, home: LatLon, reach: number): HourProfile {
+  const fm = new Map<string, { p: number; minutes: number[] }>();
+  for (const c of a.cells) {
+    if (haversineKm(home, c) > reach) continue;
+    for (const f of c.flights) {
+      const e = fm.get(f.callsign);
+      if (e) e.minutes.push(...f.minutes); else fm.set(f.callsign, { p: f.p, minutes: [...f.minutes] });
+    }
+  }
+  const byHour: number[][] = Array.from({ length: 24 }, () => []);
+  for (const f of fm.values()) {
+    const m = ((Math.round(median(f.minutes)) % 1440) + 1440) % 1440;
+    byHour[Math.floor(m / 60)].push(f.p);
+  }
+  return { expected: byHour.map((ps) => ps.reduce((x, y) => x + y, 0)), prob: byHour.map((ps) => (ps.length ? union(ps) : 0)) };
 }

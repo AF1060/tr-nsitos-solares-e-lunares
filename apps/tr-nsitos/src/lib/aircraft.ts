@@ -1,7 +1,7 @@
 import { bodyTopo, bodyEcefKm, Target } from './astro';
 import { LatLon, destination, geodeticToEcef, ecefToGeodetic, enuVec, skyOffset, len, haversineKm, bearingDeg, rayEarth, norm, sub } from './geo';
 import type { SkyPoint } from './iss';
-import { offsetBand, OffsetBand } from './offset';
+import { offsetBand, OffsetBand, OFFSET_FRAC } from './offset';
 
 export interface Plane {
   icao24: string;
@@ -59,13 +59,13 @@ function pickAlternatives(sites: AltSite[], n = 4): AltSite[] {
 }
 
 /** Junta a cada local a faixa lateral onde o avião ainda passa até 2/3 do raio do centro do disco. */
-function withBand(p: Plane, home: LatLon, target: Target, sites: AltSite[]): AltSite[] {
+function withBand(p: Plane, home: LatLon, target: Target, sites: AltSite[], frac: number): AltSite[] {
   const up = norm(geodeticToEcef(home.lat, home.lon, 0));
   return sites.map((a) => {
     const p0 = planeAt(p, a.t), p1 = planeAt(p, a.t + 1000);
     const e0 = geodeticToEcef(p0.lat, p0.lon, p0.altKm), e1 = geodeticToEcef(p1.lat, p1.lon, p1.altKm);
     const date = new Date(a.t);
-    const band = offsetBand(e0, sub(e1, e0), bodyEcefKm(target, date), bodyTopo(target, date, home).radiusDeg, up);
+    const band = offsetBand(e0, sub(e1, e0), bodyEcefKm(target, date), bodyTopo(target, date, home).radiusDeg, up, frac);
     return { ...a, band };
   });
 }
@@ -89,7 +89,7 @@ export const errorModel = (dtS: number, v: number, rangeKm: number) => {
   return { errDeg: (Math.atan(errKm / Math.max(rangeKm, 1)) * 180) / Math.PI, errS: 1 + 0.03 * dtS };
 };
 
-export function predict(p: Plane, home: LatLon, target: Target, marginDeg: number, now: number, maxKm = 30, horizonS = 600): PlanePrediction | null {
+export function predict(p: Plane, home: LatLon, target: Target, marginDeg: number, now: number, maxKm = 30, offsetFrac = OFFSET_FRAC, horizonS = 600): PlanePrediction | null {
   const body0 = bodyTopo(target, new Date(now), home);
   if (body0.el < 0) return null;
   let best = { sep: Infinity, t: now };
@@ -104,7 +104,7 @@ export function predict(p: Plane, home: LatLon, target: Target, marginDeg: numbe
   const at = planeOffset(p, best.t, home, target);
   const r = at.body.radiusDeg;
   const { errDeg, errS } = errorModel((best.t - now) / 1000, p.velocity, at.range);
-  const alternatives = withBand(p, home, target, pickAlternatives(centerSites(p, home, target, now, horizonS, maxKm)));
+  const alternatives = withBand(p, home, target, pickAlternatives(centerSites(p, home, target, now, horizonS, maxKm)), offsetFrac);
   if (best.sep > r + marginDeg + errDeg && alternatives.length === 0) return null;
   let entry: number | null = null, exit: number | null = null, marginEntry: number | null = null;
   for (let t = best.t - 120_000; t <= best.t + 120_000; t += 50) {

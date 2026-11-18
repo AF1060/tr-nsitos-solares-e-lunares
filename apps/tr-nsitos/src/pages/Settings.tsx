@@ -96,6 +96,9 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="rounded-md bg-muted p-3 text-sm">Enquadramento: <span className="font-mono">{fmtNum(fov.w, 2)}° × {fmtNum(fov.h, 2)}°</span></div>
+          <Range label="Faixa de passagem · aviões" value={s.aircraftOffsetPercent} unit="% do raio" min={0} max={100} step={5} onChange={(n) => set({ aircraftOffsetPercent: n })} />
+          <Range label="Faixa de passagem · ISS" value={s.issOffsetPercent} unit="% do raio" min={0} max={100} step={5} onChange={(n) => set({ issOffsetPercent: n })} />
+          <p className="text-xs text-muted-foreground">Até onde, acima ou abaixo do centro do disco, a passagem ainda serve para fotografar (100 % = até à borda). A ISS demora 1–2 s no disco, por isso convém um valor mais baixo; os aviões ficam visíveis mais tempo e toleram um valor maior.</p>
           <Range label="Orla do disco" value={s.marginDegrees} unit="°" min={0} max={5} step={0.1} onChange={(n) => set({ marginDegrees: n })} />
         </Card>
         <Card title="Alarmes">

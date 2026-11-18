@@ -111,6 +111,10 @@ export type ObserverSettingsRecordType = {
   /** "Aircraft Alert Seconds". 1 decimal places, format: local (e.g. 1,000,000.50) */
   aircraftAlertSeconds?: number;
   voiceAlerts?: boolean;
+  /** "Aircraft Offset Percent". 0 decimal places, format: local (e.g. 1,000,000.50) */
+  aircraftOffsetPercent?: number;
+  /** "ISS Offset Percent". 0 decimal places, format: local (e.g. 1,000,000.50) */
+  issOffsetPercent?: number;
 };
 
 /** What you may write when creating or updating a record in the "Observer Settings" table. */
@@ -129,6 +133,8 @@ export type ObserverSettingsRecordInput = {
   issAlertMinutes: string | number | null;
   aircraftAlertSeconds: string | number | null;
   voiceAlerts: string | boolean | null;
+  aircraftOffsetPercent: string | number | null;
+  issOffsetPercent: string | number | null;
 };
 
 /** A record in the "Planned Passes" table, as it is read back. */

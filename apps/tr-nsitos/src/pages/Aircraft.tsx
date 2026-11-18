@@ -7,7 +7,6 @@ import { useApp } from '../context/AppContext';
 import { useAircraft, RADAR_KM } from '../context/AircraftContext';
 import { planeAt, planePolar, planeTrack, PlanePrediction } from '../lib/aircraft';
 import { compass } from '../lib/geo';
-import { OFFSET_FRAC } from '../lib/offset';
 import { Navigation } from 'lucide-react';
 import { bodyTopo, fieldOfView } from '../lib/astro';
 import { fmtCoord, fmtIn, fmtNum, fmtTime, mapsUrl } from '../lib/format';
@@ -157,7 +156,7 @@ function PlaneDetail({ p, onClose }: { p: PlanePrediction | null; onClose: () =>
             <DiscDiagram target={target} radiusDeg={p.radiusDeg} marginDeg={settings.marginDegrees} frame={frame} track={track} entry={p.entry} errDeg={p.errDeg} />
             <p className="text-xs text-muted-foreground">A faixa vermelha mostra a incerteza da trajetória prevista.</p>
             <div className="space-y-2">
-              <div className="text-sm font-medium">Locais para a passagem (até {settings.maxTravelKm} km): centro do disco e faixa até {fmtNum(OFFSET_FRAC * 100, 0)} % do raio</div>
+              <div className="text-sm font-medium">Locais para a passagem (até {settings.maxTravelKm} km): centro do disco e faixa até {fmtNum(settings.aircraftOffsetPercent, 0)} % do raio (Definições)</div>
               {p.alternatives.length === 0 && <div className="text-sm text-muted-foreground">A linha central não passa a menos de {settings.maxTravelKm} km.</div>}
               {p.alternatives.map((a, i) => (
                 <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3 text-sm">
@@ -166,7 +165,7 @@ function PlaneDetail({ p, onClose }: { p: PlanePrediction | null; onClose: () =>
                     <div className="text-xs text-muted-foreground">{fmtCoord(a.lat, a.lon)} · às {fmtTime(a.t)} (± {fmtNum(p.errS, 0)} s)</div>
                     {a.band && (
                       <div className="mt-1 space-y-1 text-xs">
-                        <div>Faixa utilizável: {fmtNum(a.band.halfWidthM * 2, 0)} m de largura (± {fmtNum(a.band.halfWidthM, 0)} m da linha central), para o avião passar em qualquer ponto do disco entre {fmtNum(OFFSET_FRAC * 100, 0)} % do raio abaixo e {fmtNum(OFFSET_FRAC * 100, 0)} % acima do centro.</div>
+                        <div>Faixa utilizável: {fmtNum(a.band.halfWidthM * 2, 0)} m de largura (± {fmtNum(a.band.halfWidthM, 0)} m da linha central), para o avião passar em qualquer ponto do disco entre {fmtNum(a.band.frac * 100, 0)} % do raio abaixo e {fmtNum(a.band.frac * 100, 0)} % acima do centro.</div>
                         <div>Para passar mais abaixo no disco, desloque-se para {compass(a.band.belowBrg)}; mais acima, para {compass((a.band.belowBrg + 180) % 360)}. No disco: {fmtNum(a.band.discCentreS, 1)} s no centro · {fmtNum(a.band.discEdgeS, 1)} s nos limites da faixa.</div>
                         <div className="flex gap-3">
                           <a className="underline" href={mapsUrl(a.band.below.lat, a.band.below.lon)} target="_blank" rel="noreferrer">Limite inferior ({compass(a.band.belowBrg)})</a>

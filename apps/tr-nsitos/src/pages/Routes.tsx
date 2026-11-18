@@ -8,7 +8,7 @@ import { useApp } from '../context/AppContext';
 import type { Target } from '../lib/astro';
 import { compass } from '../lib/geo';
 import { fmtCoord, fmtNum, mapsUrl } from '../lib/format';
-import { analyse, bestZone, scoreDay, lisbonDayStart, fmtMinute, CELL, RADIUS, WEEKDAYS_SHORT, Mode, Cell, Zone, DayScore } from '../lib/routeStats';
+import { analyse, bestZone, scoreDay, hourProfile, lisbonDayStart, fmtMinute, CELL, RADIUS, WEEKDAYS_SHORT, Mode, Cell, Zone, DayScore, HourProfile } from '../lib/routeStats';
 
 const pct = (p: number) => `${fmtNum(p * 100, 0)} %`;
 const DAY_MS = 86_400_000;
@@ -48,6 +48,36 @@ export default function Routes() {
     return () => { stop = true; };
   }, [data, home, minEl, mode, reach]);
 
+  // Horas com mais cruzamentos (toda a área alcançável) no dia escolhido, para o Sol e para a Lua.
+  const profiles = useMemo(() => {
+    if (!data) return null;
+    return {
+      Sol: hourProfile(analyse(data.rows, day, home, 'Sol', minEl, mode), home, reach),
+      Lua: hourProfile(analyse(data.rows, day, home, 'Lua', minEl, mode), home, reach),
+    } as Record<Target, HourProfile>;
+  }, [data, day, home, minEl, mode, reach]);
+
+  // Grelha dia da semana × hora para o alvo escolhido (próximos 7 dias).
+  const [week, setWeek] = useState<{ start: number; weekday: number; prob: number[]; expected: number[] }[]>([]);
+  useEffect(() => {
+    if (!data) return;
+    let stop = false;
+    setWeek([]);
+    (async () => {
+      const t0 = lisbonDayStart(new Date());
+      const out: typeof week = [];
+      for (let i = 0; i < 7 && !stop; i++) {
+        await new Promise((r) => setTimeout(r, 0));
+        const a = analyse(data.rows, new Date(t0 + i * DAY_MS + 12 * 3600_000), home, body, minEl, mode);
+        const h = hourProfile(a, home, reach);
+        out.push({ start: a.start, weekday: a.weekday, prob: h.prob, expected: h.expected });
+        if (!stop) setWeek([...out]);
+      }
+    })();
+    return () => { stop = true; };
+  }, [data, home, body, minEl, mode, reach]);
+
+  const weekMax = Math.max(0.01, ...week.flatMap((d) => d.expected));
   const key = body === 'Sol' ? 'sol' : 'lua';
   const best = useMemo(() => [...cal].sort((a, b) => b[key] - a[key]).filter((d) => d[key] > 0).slice(0, 3), [cal, key]);
   const name = body === 'Sol' ? 'o Sol' : 'a Lua';
@@ -114,6 +144,31 @@ export default function Routes() {
             <div className="mt-1 text-[11px] text-muted-foreground"><span className="text-amber-400">■</span> Sol · <span className="text-sky-300">■</span> Lua. Altura da barra = probabilidade de pelo menos um voo regular se alinhar na melhor zona.</div>
           </div>
 
+          {profiles && (
+            <div className="rounded-xl border border-border bg-card p-3">
+              <div className="mb-2 text-sm font-medium">Horas com mais cruzamentos · {day.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Lisbon' })} (toda a área até {reach} km)</div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {(['Sol', 'Lua'] as const).map((t) => <HourBars key={t} t={t} prof={profiles[t]} />)}
+              </div>
+              <div className="mt-3 text-sm font-medium">Próximos 7 dias · {body} · voos esperados por hora</div>
+              <div className="mt-1 overflow-x-auto">
+                <div className="min-w-[560px] space-y-0.5">
+                  <div className="flex pl-14 text-[9px] text-muted-foreground">{Array.from({ length: 24 }, (_, h) => <div key={h} className="flex-1 text-center">{h % 2 === 0 ? String(h).padStart(2, '0') : ''}</div>)}</div>
+                  {week.map((d) => (
+                    <div key={d.start} className="flex items-center">
+                      <div className="w-14 shrink-0 text-[10px] text-muted-foreground">{WEEKDAYS_SHORT[d.weekday]} {new Date(d.start).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Lisbon' })}</div>
+                      {d.prob.map((p, h) => (
+                        <div key={h} className="mx-px h-5 flex-1 rounded-sm bg-primary" style={{ opacity: d.expected[h] > 0 ? 0.15 + 0.85 * (d.expected[h] / weekMax) : 0.04 }} title={`${String(h).padStart(2, '0')}h · ~${fmtNum(d.expected[h], 1)} voo(s) · ${pct(p)}`} />
+                      ))}
+                    </div>
+                  ))}
+                  {week.length < 7 && <Loader2 className="mt-1 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                </div>
+              </div>
+              <div className="mt-1 text-[11px] text-muted-foreground">Só há valores nas horas em que {name} está acima da altura mínima e já houve observações nessa hora e dia da semana. Mais dias de dados dão perfis mais fiáveis.</div>
+            </div>
+          )}
+
           {!analysis || !zone ? (
             <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
               Ainda não há dados suficientes para este dia/alvo dentro do alcance de {reach} km. Abra o separador Aviões durante as horas em que {name} está alto para começar a recolher{mode === 'semanal' ? ', ou experimente "Qualquer dia"' : ''}.
@@ -152,6 +207,29 @@ export default function Routes() {
               </div>
             </div>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function HourBars({ t, prof }: { t: Target; prof: HourProfile }) {
+  const top = prof.prob.map((p, h) => ({ p, h, e: prof.expected[h] })).filter((x) => x.e > 0).sort((a, b) => b.e - a.e).slice(0, 3);
+  const max = Math.max(...prof.expected, 0.01);
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-1.5 text-sm">{t === 'Sol' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-sky-300" />}<span className="font-medium">{t}</span></div>
+      {top.length === 0 ? <div className="text-xs text-muted-foreground">Sem alinhamentos prováveis neste dia (ou sem dados nessas horas).</div> : (
+        <>
+          <div className="flex h-20 items-end gap-px">
+            {prof.expected.map((e, h) => (
+              <div key={h} className="flex flex-1 flex-col items-center justify-end" title={`${String(h).padStart(2, '0')}h · ~${fmtNum(e, 1)} voo(s) · ${pct(prof.prob[h])}`}>
+                <div className={cn('w-full rounded-sm', t === 'Sol' ? 'bg-amber-400' : 'bg-sky-300')} style={{ height: `${e > 0 ? Math.max(6, (e / max) * 100) : 1}%`, opacity: e > 0 ? 1 : 0.2 }} />
+              </div>
+            ))}
+          </div>
+          <div className="flex text-[9px] text-muted-foreground">{Array.from({ length: 24 }, (_, h) => <div key={h} className="flex-1 text-center">{h % 3 === 0 ? String(h).padStart(2, '0') : ''}</div>)}</div>
+          <div className="mt-1 text-xs">Horas com mais cruzamentos: {top.map((x) => `${String(x.h).padStart(2, '0')}h (~${fmtNum(x.e, 1)} voo${x.e >= 1.5 ? 's' : ''}, ${pct(x.p)})`).join(' · ')}</div>
         </>
       )}
     </div>

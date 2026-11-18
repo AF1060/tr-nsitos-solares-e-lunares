@@ -17,6 +17,8 @@ export default createEndpoint({
     issAlertMinutes: z.number(),
     aircraftAlertSeconds: z.number(),
     voiceAlerts: z.boolean(),
+    aircraftOffsetPercent: z.number(),
+    issOffsetPercent: z.number(),
   }),
   outputSchema: z.object({ success: z.boolean() }),
   execute: async ({ input, context }) => {

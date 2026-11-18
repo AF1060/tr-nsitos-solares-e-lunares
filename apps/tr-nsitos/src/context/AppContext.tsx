@@ -19,12 +19,16 @@ export interface Settings {
   issAlertMinutes: number;
   aircraftAlertSeconds: number;
   voiceAlerts: boolean;
+  /** Até que % do raio do disco (acima/abaixo do centro) a passagem ainda é boa para fotografar. */
+  aircraftOffsetPercent: number;
+  issOffsetPercent: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   useGps: true, latitude: 38.7223, longitude: -9.1393, defaultTarget: 'Sol', marginDegrees: 2,
   maxTravelKm: 30, minElevationDegrees: 10, focalLengthMm: 600, sensor: 'Micro 4/3',
   issAlertMinutes: 15, aircraftAlertSeconds: 60, voiceAlerts: true,
+  aircraftOffsetPercent: 80, issOffsetPercent: 67,
 };
 
 export type PlannedPass = ListPlannedPassesOutputType['passes'][0];
@@ -149,7 +153,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!loaded || !sat) return;
     let alive = true;
     setIss((s) => ({ ...s, status: 'computing', progress: 0 }));
-    const opts = { home, maxTravelKm: settings.maxTravelKm, minElevDeg: settings.minElevationDegrees, days: 10 };
+    const opts = { home, maxTravelKm: settings.maxTravelKm, minElevDeg: settings.minElevationDegrees, offsetFrac: settings.issOffsetPercent / 100, days: 10 };
     (async () => {
       const sol = await searchTransits(sat, 'Sol', { ...opts, onProgress: (p) => alive && setIss((s) => ({ ...s, progress: p / 2 })) });
       if (!alive) return;
@@ -158,7 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setIss({ status: 'ready', progress: 1, passes: [...sol, ...lua].sort((a, b) => a.center - b.center), tleAt });
     })().catch(() => alive && setIss((s) => ({ ...s, status: 'error', error: 'Falha no cálculo das passagens' })));
     return () => { alive = false; };
-  }, [loaded, sat, tleAt, home, settings.maxTravelKm, settings.minElevationDegrees]);
+  }, [loaded, sat, tleAt, home, settings.maxTravelKm, settings.minElevationDegrees, settings.issOffsetPercent]);
 
   const refreshPlanned = useCallback(async () => {
     try {
