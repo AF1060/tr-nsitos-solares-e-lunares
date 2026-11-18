@@ -213,6 +213,20 @@ export type AircraftSightingsRecordInput = {
   owner: string | string[] | null;
 };
 
+/** A record in the "Code Backups" table, as it is read back. */
+export type CodeBackupsRecordType = {
+  id: string;
+  /** Primary field. "Name" */
+  name?: string;
+  file?: ZiteAttachment[];
+};
+
+/** What you may write when creating or updating a record in the "Code Backups" table. */
+export type CodeBackupsRecordInput = {
+  name: string | null;
+  file: ZiteAttachmentInput[] | ZiteAttachmentInput | null;
+};
+
 export interface ZiteAuthUser {
   id: string;
   name: string;
@@ -226,6 +240,7 @@ export const zite = {
   observerSettings: createTableClient<ObserverSettingsRecordType, ObserverSettingsRecordInput>('ObserverSettings'), // "Observer Settings"
   plannedPasses: createTableClient<PlannedPassesRecordType, PlannedPassesRecordInput>('PlannedPasses'), // "Planned Passes"
   aircraftSightings: createTableClient<AircraftSightingsRecordType, AircraftSightingsRecordInput>('AircraftSightings'), // "Aircraft Sightings"
+  codeBackups: createTableClient<CodeBackupsRecordType, CodeBackupsRecordInput>('CodeBackups'), // "Code Backups"
   sql: createSqlClient(),
   auth: createAuthClient<ZiteAuthUser>(),
 };

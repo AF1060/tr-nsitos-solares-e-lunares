@@ -546,6 +546,32 @@
           }
         }
       ]
+    },
+    {
+      "id": "t6nGMKGyiGU",
+      "sdkName": "codeBackups",
+      "name": "Code Backups",
+      "primaryFieldId": "fwTKYz9mbiK",
+      "fields": [
+        {
+          "id": "fwTKYz9mbiK",
+          "sdkName": "name",
+          "definition": {
+            "name": "Name",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "fuZ6mbYbqoZ",
+          "sdkName": "file",
+          "definition": {
+            "name": "File",
+            "type": "attachments",
+            "template": {}
+          }
+        }
+      ]
     }
   ]
 }

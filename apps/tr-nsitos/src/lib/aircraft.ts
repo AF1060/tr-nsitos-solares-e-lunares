@@ -97,7 +97,11 @@ export function predict(p: Plane, home: LatLon, target: Target, marginDeg: numbe
     const s = planeOffset(p, t, home, target);
     if (s.sep < best.sep) best = { sep: s.sep, t };
   }
-  for (let t = best.t - 1000; t <= best.t + 1000; t += 50) {
+  // Refinamento fino à volta do mínimo grosseiro. Os limites são fixados ANTES do ciclo: se dependessem de
+  // best.t (que é atualizado lá dentro), o ciclo seguia o mínimo para além do horizonte, durante horas.
+  const coarseT = best.t;
+  const tMax = now + horizonS * 1000;
+  for (let t = Math.max(now, coarseT - 1000); t <= Math.min(tMax, coarseT + 1000); t += 50) {
     const s = planeOffset(p, t, home, target);
     if (s.sep < best.sep) best = { sep: s.sep, t };
   }
