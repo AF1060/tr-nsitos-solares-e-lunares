@@ -5,6 +5,9 @@ declare namespace NodeJS {
   interface ProcessEnv {
     /** Public URL of the current app. */
     ZITE_APP_URL: string;
+    /** gemini access token (gemini) */
+    ZITE_GEMINI_ACCESS_TOKEN: string;
+    ZITE_FLYITALYADSB_API_KEY: string;
     /** Client ID da API da OpenSky Network (credenciais OAuth da sua conta) */
     ZITE_OPENSKY_CLIENT_ID: string;
     /** Client Secret da API da OpenSky Network (credenciais OAuth da sua conta) */

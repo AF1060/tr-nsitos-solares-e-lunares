@@ -4,6 +4,7 @@
     "basePublicIdentifier": "f29430b3ce21e86e"
   },
   "envVars": {
+    "ZITE_FLYITALYADSB_API_KEY": {},
     "ZITE_OPENSKY_CLIENT_ID": {
       "description": "Client ID da API da OpenSky Network (credenciais OAuth da sua conta)"
     },
