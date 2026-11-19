@@ -10,5 +10,11 @@
     "ZITE_OPENSKY_CLIENT_SECRET": {
       "description": "Client Secret da API da OpenSky Network (credenciais OAuth da sua conta)"
     }
+  },
+  "integrations": {
+    "gemini": {
+      "type": "gemini",
+      "connectionId": "svc_586413"
+    }
   }
 }
