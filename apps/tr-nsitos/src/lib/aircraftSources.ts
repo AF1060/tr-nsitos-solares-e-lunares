@@ -1,38 +1,14 @@
 import { zite } from 'zitejs/db';
+import { fetchTimeout, parseTar1090, type RawPlane } from './aircraftParse';
 
-export interface RawPlane {
-  icao24: string; callsign: string; country: string; posTime: number;
-  lat: number; lon: number; altM: number; velocity: number; track: number; vrate: number;
-}
+export type { RawPlane };
 
-async function fetchTimeout(url: string, ms = 8000, headers?: Record<string, string>) {
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), ms);
-  try { return await fetch(url, { signal: c.signal, headers }); } finally { clearTimeout(t); }
-}
-
-function parseTar1090(j: { now: number; ac?: Record<string, unknown>[] }): { planes: RawPlane[]; time: number } {
-  const nowS = j.now / 1000;
-  const planes = (j.ac ?? [])
-    .filter((a) => typeof a.lat === 'number' && typeof a.lon === 'number' && a.alt_baro !== 'ground' && typeof a.gs === 'number')
-    .map((a) => ({
-      icao24: String(a.hex),
-      callsign: String(a.flight ?? '').trim() || String(a.r ?? a.hex).toUpperCase(),
-      country: String(a.t ?? ''),
-      posTime: nowS - Number(a.seen_pos ?? 0),
-      lat: Number(a.lat), lon: Number(a.lon),
-      altM: Number(a.alt_geom ?? a.alt_baro ?? 0) * 0.3048,
-      velocity: Number(a.gs) * 0.514444,
-      track: Number(a.track ?? a.true_heading ?? 0),
-      vrate: (Number(a.geom_rate ?? a.baro_rate ?? 0) * 0.3048) / 60,
-    }));
-  return { planes, time: nowS };
-}
-
-// O saldo do adsb.lol (500 pedidos/24h, janela deslizante) tem de ser partilhado por TODAS as execuções:
-// o radar em direto (uma chamada por utilizador a cada poucos segundos) e a recolha agendada. Cada
-// execução corre isolada, por isso uma variável em memória não chega — por vezes nem travava a tempo, e o
-// saldo esgotava sem aviso a meio do dia. Guardamos o estado numa tabela, lido/escrito a cada chamada.
+// O saldo do adsb.lol (500 pedidos/24h, janela deslizante) é partilhado por TODAS as execuções
+// no backend: hoje, só a recolha agendada (collectSightings, a cada 15 min). O radar em direto já não
+// passa por aqui — corre no browser do utilizador (ver aircraftBrowser.ts) e só cai neste caminho como
+// reserva, se o pedido direto falhar. Cada execução corre isolada, por isso uma variável em memória não
+// chega — por vezes nem travava a tempo, e o saldo esgotava sem aviso a meio do dia. Guardamos o estado
+// numa tabela, lido/escrito a cada chamada.
 const KEY = 'adsbLol';
 const RESERVE = 40; // pedidos que ficam sempre de fora, para nunca chegar mesmo a 0 sem aviso prévio
 

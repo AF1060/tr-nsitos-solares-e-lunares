@@ -17,8 +17,10 @@ import type { Connected, NeedsConnect } from 'zitejs/runtime';
 
 export type { Connected, NeedsConnect };
 
-export type IntegrationName = never;
+export type IntegrationName = 'gemini';
 
-export type IntegrationByName = {};
+export type IntegrationByName = {
+  'gemini': Connected;
+};
 
 export const integrations = createIntegrationsClient<IntegrationByName>();

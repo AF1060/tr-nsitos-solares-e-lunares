@@ -1,6 +1,6 @@
 import { recordPlanes } from '../lib/sightings';
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
-import { getAircraft } from 'zitejs/api';
+import { fetchPlanes } from '../lib/aircraftBrowser';
 import { useApp } from './AppContext';
 import { predict, Plane, PlanePrediction } from '../lib/aircraft';
 
@@ -26,8 +26,10 @@ export const POLL_MS = 45_000;
 /** Dados mais antigos do que isto deixam de servir para prever passagens. */
 export const STALE_MS = 180_000;
 
-// Quando o saldo do adsb.lol aperta, o radar em direto abranda por si — para deixar mais pedidos para a
-// recolha agendada e para os outros observadores — em vez de continuar ao ritmo normal até rebentar.
+// Quando o radar cai para o backend (pedido direto do browser falhou) e o saldo do adsb.lol aperta,
+// abranda por si — para deixar mais pedidos para a recolha agendada e para os outros observadores —
+// em vez de continuar ao ritmo normal até rebentar. Com o pedido direto do browser (o caso normal),
+// `remaining` vem a null e usa-se sempre o intervalo normal.
 function intervalFor(remaining: number | null) {
   if (remaining === null) return POLL_MS;
   if (remaining > 150) return POLL_MS;
@@ -63,7 +65,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
       if (!alive || !visible() || busy) return;
       busy = true; lastFetch = Date.now();
       try {
-        const r = await getAircraft({ lat: home.lat, lon: home.lon, radiusKm: RADAR_KM });
+        const r = await fetchPlanes(home.lat, home.lon, RADAR_KM);
         if (!alive) return;
         remaining = r.remaining;
         setMeta({ source: r.source, remaining: r.remaining, resetAt: r.resetAt });
@@ -71,7 +73,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
         setError(null); failures = 0;
       } catch {
         failures++;
-        if (alive) setError('Sem saldo no adsb.lol nem na reserva (adsb.fi). A tentar de novo com intervalos crescentes…');
+        if (alive) setError('Não foi possível obter os aviões (rede, CORS ou serviço em baixo). A tentar de novo com intervalos crescentes…');
       } finally {
         busy = false;
         // Em erro, recuo progressivo (45 s → 5 min); sem erro, o intervalo normal segue o saldo restante.
