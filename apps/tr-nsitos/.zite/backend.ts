@@ -114,8 +114,6 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
       "ZITE_APP_URL": string;
-      "ZITE_OPENSKY_CLIENT_ID": string;
-      "ZITE_OPENSKY_CLIENT_SECRET": string;
     }
   }
 }
