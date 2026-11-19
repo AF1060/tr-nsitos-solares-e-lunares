@@ -3,12 +3,10 @@ import { fetchTimeout, parseTar1090, type RawPlane } from './aircraftParse';
 
 export type { RawPlane };
 
-// O saldo do adsb.lol (500 pedidos/24h, janela deslizante) é partilhado por TODAS as execuções
-// no backend: hoje, só a recolha agendada (collectSightings, a cada 15 min). O radar em direto já não
-// passa por aqui — corre no browser do utilizador (ver aircraftBrowser.ts) e só cai neste caminho como
-// reserva, se o pedido direto falhar. Cada execução corre isolada, por isso uma variável em memória não
-// chega — por vezes nem travava a tempo, e o saldo esgotava sem aviso a meio do dia. Guardamos o estado
-// numa tabela, lido/escrito a cada chamada.
+// O saldo do adsb.lol (500 pedidos/24h, janela deslizante) tem de ser partilhado por TODAS as execuções:
+// o radar em direto (uma chamada por utilizador a cada poucos segundos) e a recolha agendada. Cada
+// execução corre isolada, por isso uma variável em memória não chega — por vezes nem travava a tempo, e o
+// saldo esgotava sem aviso a meio do dia. Guardamos o estado numa tabela, lido/escrito a cada chamada.
 const KEY = 'adsbLol';
 const RESERVE = 40; // pedidos que ficam sempre de fora, para nunca chegar mesmo a 0 sem aviso prévio
 
