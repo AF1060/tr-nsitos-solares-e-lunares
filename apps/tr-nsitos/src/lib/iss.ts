@@ -99,7 +99,19 @@ export interface SearchOptions {
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-export async function searchTransits(sat: SatRec, target: Target, o: SearchOptions): Promise<IssTransit[]> {
+/** Passagem mais próxima de casa encontrada no período pesquisado, mesmo que fora do alcance escolhido. */
+export interface NearestMiss {
+  distKm: number;
+  at: number;
+}
+
+export interface SearchResult {
+  transits: IssTransit[];
+  /** null só se o Sol/Lua nunca esteve acima da altura mínima durante todo o período pesquisado. */
+  nearest: NearestMiss | null;
+}
+
+export async function searchTransits(sat: SatRec, target: Target, o: SearchOptions): Promise<SearchResult> {
   const home = o.home;
   const he = geodeticToEcef(home.lat, home.lon, 0);
   const up = norm(he);
@@ -108,6 +120,7 @@ export async function searchTransits(sat: SatRec, target: Target, o: SearchOptio
   const step = 5000;
   const minSin = Math.sin((o.minElevDeg - 3) * DEG);
   const out: IssTransit[] = [];
+  let nearest: NearestMiss | null = null;
   let prevG: Vec | null = null;
   let prevT = 0;
   let i = 0;
@@ -118,6 +131,10 @@ export async function searchTransits(sat: SatRec, target: Target, o: SearchOptio
     if (dot(norm(sub(b, he)), up) < minSin) { prevG = null; continue; }
     const G = centerGround(sat, target, date);
     if (!G) { prevG = null; continue; }
+    // Distância do centro da passagem a casa, nesta amostra grosseira (passo de 5 s): serve para indicar
+    // o ponto mais próximo mesmo quando nenhuma passagem cai dentro do alcance escolhido.
+    const d = haversineKm(home, ecefToGeodetic(G));
+    if (!nearest || d < nearest.distKm) nearest = { distKm: d, at: t };
     if (prevG && segDist(he, prevG, G) <= o.maxTravelKm + 12) {
       const found = refine(sat, target, o, he, prevT - 3 * step, t + 3 * step);
       if (found) { out.push(found); t += 180_000; prevG = null; continue; }
@@ -126,7 +143,7 @@ export async function searchTransits(sat: SatRec, target: Target, o: SearchOptio
     prevT = t;
   }
   o.onProgress?.(1);
-  return out;
+  return { transits: out, nearest };
 }
 
 function refine(sat: SatRec, target: Target, o: SearchOptions, he: Vec, t0: number, t1: number): IssTransit | null {

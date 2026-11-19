@@ -5,7 +5,7 @@ import { Progress } from '@project/components/ui/progress';
 import { cn } from '@project/components/lib/utils';
 import { useApp } from '../context/AppContext';
 import { compass } from '../lib/geo';
-import { fmtDay, fmtNum, fmtTime, mapsUrl } from '../lib/format';
+import { fmtDay, fmtIn, fmtNum, fmtTime, mapsUrl } from '../lib/format';
 import { weatherAt } from '../lib/weather';
 import PassDetail, { exportPass, passQuality } from '../components/PassDetail';
 import type { IssTransit } from '../lib/iss';
@@ -43,8 +43,11 @@ export default function Iss() {
       )}
       {iss.status === 'error' && <div className="rounded-xl border border-destructive p-4 text-sm text-destructive">{iss.error}</div>}
       {iss.status === 'ready' && rows.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          Nenhuma passagem frente {filter === 'Lua' ? 'à Lua' : filter === 'Sol' ? 'ao Sol' : 'ao Sol ou à Lua'} até {settings.maxTravelKm} km nos próximos 10 dias. Aumente a distância máxima nas Definições para ver mais.
+        <div className="space-y-2 rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          <div>
+            Nenhuma passagem frente {filter === 'Lua' ? 'à Lua' : filter === 'Sol' ? 'ao Sol' : 'ao Sol ou à Lua'} até {settings.maxTravelKm} km nos próximos 10 dias. Aumente a distância máxima nas Definições para ver mais.
+          </div>
+          <NearestInfo filter={filter} nearest={iss.nearest} maxTravelKm={settings.maxTravelKm} />
         </div>
       )}
       <div className="space-y-3">
@@ -64,6 +67,28 @@ export default function Iss() {
         ))}
       </div>
       <PassDetail pass={open} onClose={() => setOpen(null)} />
+    </div>
+  );
+}
+
+const prep = (t: 'Sol' | 'Lua') => (t === 'Sol' ? 'ao Sol' : 'à Lua');
+
+function NearestInfo({ filter, nearest, maxTravelKm }: { filter: Filter; nearest: { Sol: import('../lib/iss').NearestMiss | null; Lua: import('../lib/iss').NearestMiss | null }; maxTravelKm: number }) {
+  const candidates = (filter === 'Ambos' ? (['Sol', 'Lua'] as const) : filter === 'Sol' ? (['Sol'] as const) : (['Lua'] as const))
+    .map((t) => (nearest[t] ? { target: t, ...nearest[t]! } : null))
+    .filter((x): x is { target: 'Sol' | 'Lua'; distKm: number; at: number } => !!x)
+    .sort((a, b) => a.distKm - b.distKm);
+  const best = candidates[0];
+  if (!best) {
+    return <div>Nos próximos 10 dias, o Sol e a Lua não chegam a estar acima da altura mínima o suficiente para haver qualquer passagem a considerar.</div>;
+  }
+  const other = candidates[1];
+  return (
+    <div>
+      O ponto mais próximo onde passaria a ser visível frente {prep(best.target)} fica a{' '}
+      <span className="font-medium text-foreground">{fmtNum(best.distKm, 1)} km</span> de casa
+      {' '}({fmtNum(best.distKm - maxTravelKm, 1)} km além da sua distância máxima atual), daqui a {fmtIn(best.at - Date.now())}.
+      {other && ` Frente ${prep(other.target)}, o ponto mais próximo fica a ${fmtNum(other.distKm, 1)} km.`}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { toast } from 'sonner';
 import { getSettings, saveSettings, getIssTle, listPlannedPasses, ListPlannedPassesOutputType } from 'zitejs/api';
 import type { Target } from '../lib/astro';
-import { makeSat, searchTransits, IssTransit, SatRec } from '../lib/iss';
+import { makeSat, searchTransits, IssTransit, NearestMiss, SatRec } from '../lib/iss';
 import { fetchWeather, Weather } from '../lib/weather';
 
 export interface Settings {
@@ -37,6 +37,8 @@ interface IssState {
   status: 'loading' | 'computing' | 'ready' | 'error';
   progress: number;
   passes: IssTransit[];
+  /** Ponto mais próximo de casa encontrado nos 10 dias, por alvo, mesmo fora do alcance escolhido. */
+  nearest: { Sol: NearestMiss | null; Lua: NearestMiss | null };
   tleAt: number | null;
   error?: string;
 }
@@ -68,7 +70,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [weather, setWeather] = useState<Weather | null>(null);
   const [sat, setSat] = useState<SatRec | null>(null);
   const [tleAt, setTleAt] = useState<number | null>(null);
-  const [iss, setIss] = useState<IssState>({ status: 'loading', progress: 0, passes: [], tleAt: null });
+  const [iss, setIss] = useState<IssState>({ status: 'loading', progress: 0, passes: [], nearest: { Sol: null, Lua: null }, tleAt: null });
   const [planned, setPlanned] = useState<PlannedPass[]>([]);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -159,7 +161,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!alive) return;
       const lua = await searchTransits(sat, 'Lua', { ...opts, onProgress: (p) => alive && setIss((s) => ({ ...s, progress: 0.5 + p / 2 })) });
       if (!alive) return;
-      setIss({ status: 'ready', progress: 1, passes: [...sol, ...lua].sort((a, b) => a.center - b.center), tleAt });
+      setIss({
+        status: 'ready', progress: 1,
+        passes: [...sol.transits, ...lua.transits].sort((a, b) => a.center - b.center),
+        nearest: { Sol: sol.nearest, Lua: lua.nearest },
+        tleAt,
+      });
     })().catch(() => alive && setIss((s) => ({ ...s, status: 'error', error: 'Falha no cálculo das passagens' })));
     return () => { alive = false; };
   }, [loaded, sat, tleAt, home, settings.maxTravelKm, settings.minElevationDegrees, settings.issOffsetPercent]);
