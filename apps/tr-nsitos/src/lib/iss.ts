@@ -103,6 +103,10 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 export interface NearestMiss {
   distKm: number;
   at: number;
+  lat: number;
+  lon: number;
+  /** Rumo de casa para o ponto mais próximo. */
+  bearing: number;
 }
 
 export interface SearchResult {
@@ -133,8 +137,9 @@ export async function searchTransits(sat: SatRec, target: Target, o: SearchOptio
     if (!G) { prevG = null; continue; }
     // Distância do centro da passagem a casa, nesta amostra grosseira (passo de 5 s): serve para indicar
     // o ponto mais próximo mesmo quando nenhuma passagem cai dentro do alcance escolhido.
-    const d = haversineKm(home, ecefToGeodetic(G));
-    if (!nearest || d < nearest.distKm) nearest = { distKm: d, at: t };
+    const g = ecefToGeodetic(G);
+    const d = haversineKm(home, g);
+    if (!nearest || d < nearest.distKm) nearest = { distKm: d, at: t, lat: g.lat, lon: g.lon, bearing: bearingDeg(home, g) };
     if (prevG && segDist(he, prevG, G) <= o.maxTravelKm + 12) {
       const found = refine(sat, target, o, he, prevT - 3 * step, t + 3 * step);
       if (found) { out.push(found); t += 180_000; prevG = null; continue; }

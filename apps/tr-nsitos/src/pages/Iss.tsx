@@ -76,7 +76,7 @@ const prep = (t: 'Sol' | 'Lua') => (t === 'Sol' ? 'ao Sol' : 'à Lua');
 function NearestInfo({ filter, nearest, maxTravelKm }: { filter: Filter; nearest: { Sol: import('../lib/iss').NearestMiss | null; Lua: import('../lib/iss').NearestMiss | null }; maxTravelKm: number }) {
   const candidates = (filter === 'Ambos' ? (['Sol', 'Lua'] as const) : filter === 'Sol' ? (['Sol'] as const) : (['Lua'] as const))
     .map((t) => (nearest[t] ? { target: t, ...nearest[t]! } : null))
-    .filter((x): x is { target: 'Sol' | 'Lua'; distKm: number; at: number } => !!x)
+    .filter((x): x is { target: 'Sol' | 'Lua' } & import('../lib/iss').NearestMiss => !!x)
     .sort((a, b) => a.distKm - b.distKm);
   const best = candidates[0];
   if (!best) {
@@ -86,9 +86,9 @@ function NearestInfo({ filter, nearest, maxTravelKm }: { filter: Filter; nearest
   return (
     <div>
       O ponto mais próximo onde passaria a ser visível frente {prep(best.target)} fica a{' '}
-      <span className="font-medium text-foreground">{fmtNum(best.distKm, 1)} km</span> de casa
+      <span className="font-medium text-foreground">{fmtNum(best.distKm, 1)} km para {compass(best.bearing)}</span> de casa
       {' '}({fmtNum(best.distKm - maxTravelKm, 1)} km além da sua distância máxima atual), daqui a {fmtIn(best.at - Date.now())}.
-      {other && ` Frente ${prep(other.target)}, o ponto mais próximo fica a ${fmtNum(other.distKm, 1)} km.`}
+      {other && ` Frente ${prep(other.target)}, o ponto mais próximo fica a ${fmtNum(other.distKm, 1)} km para ${compass(other.bearing)}.`}
     </div>
   );
 }
