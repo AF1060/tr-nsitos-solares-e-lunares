@@ -16,8 +16,17 @@ const plane = z.object({
 });
 
 export default createEndpoint({
-  description: 'Obtém os aviões num raio à volta do observador (adsb.lol, com adsb.fi como reserva)',
+  description: 'Obtém os aviões num raio à volta do observador (adsb.lol, com saldo partilhado e adsb.fi como reserva)',
   inputSchema: z.object({ lat: z.number(), lon: z.number(), radiusKm: z.number() }),
-  outputSchema: z.object({ planes: z.array(plane), source: z.string(), time: z.number() }),
-  execute: async ({ input }) => fetchPlanes(input.lat, input.lon, input.radiusKm),
+  outputSchema: z.object({
+    planes: z.array(plane),
+    source: z.string(),
+    time: z.number(),
+    remaining: z.number().nullable(),
+    resetAt: z.number().nullable(),
+  }),
+  execute: async ({ input }) => {
+    const r = await fetchPlanes(input.lat, input.lon, input.radiusKm);
+    return { ...r, remaining: r.remaining ?? null, resetAt: r.resetAt ?? null };
+  },
 });

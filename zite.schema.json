@@ -572,6 +572,65 @@
           }
         }
       ]
+    },
+    {
+      "id": "t6xphTAwyjZ",
+      "sdkName": "apiBudget",
+      "name": "Api Budget",
+      "primaryFieldId": "fiuhVvyBZ6t",
+      "fields": [
+        {
+          "id": "fiuhVvyBZ6t",
+          "sdkName": "key",
+          "definition": {
+            "name": "Key",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "f7sbaCLCkr1",
+          "sdkName": "day",
+          "definition": {
+            "name": "Day",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "ffK2NaNLvsr",
+          "sdkName": "used",
+          "definition": {
+            "name": "Used",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "f3EPZgYH6fP",
+          "sdkName": "remaining",
+          "definition": {
+            "name": "Remaining",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fshyJoqLThz",
+          "sdkName": "resetAt",
+          "definition": {
+            "name": "ResetAt",
+            "type": "single_line_text",
+            "template": {}
+          }
+        }
+      ]
     }
   ]
 }

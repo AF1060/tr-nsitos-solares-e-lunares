@@ -227,6 +227,28 @@ export type CodeBackupsRecordInput = {
   file: ZiteAttachmentInput[] | ZiteAttachmentInput | null;
 };
 
+/** A record in the "Api Budget" table, as it is read back. */
+export type ApiBudgetRecordType = {
+  id: string;
+  /** Primary field. "Key" */
+  key?: string;
+  day?: string;
+  /** "Used". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  used?: number;
+  /** "Remaining". 1 decimal places, format: local (e.g. 1,000,000.50) */
+  remaining?: number;
+  resetAt?: string;
+};
+
+/** What you may write when creating or updating a record in the "Api Budget" table. */
+export type ApiBudgetRecordInput = {
+  key: string | null;
+  day: string | null;
+  used: string | number | null;
+  remaining: string | number | null;
+  resetAt: string | null;
+};
+
 export interface ZiteAuthUser {
   id: string;
   name: string;
@@ -241,6 +263,7 @@ export const zite = {
   plannedPasses: createTableClient<PlannedPassesRecordType, PlannedPassesRecordInput>('PlannedPasses'), // "Planned Passes"
   aircraftSightings: createTableClient<AircraftSightingsRecordType, AircraftSightingsRecordInput>('AircraftSightings'), // "Aircraft Sightings"
   codeBackups: createTableClient<CodeBackupsRecordType, CodeBackupsRecordInput>('CodeBackups'), // "Code Backups"
+  apiBudget: createTableClient<ApiBudgetRecordType, ApiBudgetRecordInput>('ApiBudget'), // "Api Budget"
   sql: createSqlClient(),
   auth: createAuthClient<ZiteAuthUser>(),
 };

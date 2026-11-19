@@ -15,7 +15,7 @@ import DiscDiagram from '../components/DiscDiagram';
 export default function Aircraft() {
   const { settings, target } = useApp();
   const discName = target === 'Sol' ? 'ao disco solar' : 'ao disco lunar';
-  const { watching, setWatching, predictions, lastUpdate, error, source, planes, paused } = useAircraft();
+  const { watching, setWatching, predictions, lastUpdate, error, source, planes, paused, remaining, resetAt, outOfBudget } = useAircraft();
   const [open, setOpen] = useState<PlanePrediction | null>(null);
   const [now, setNow] = useState(Date.now());
   useEffect(() => { setWatching(true); }, [setWatching]);
@@ -28,11 +28,19 @@ export default function Aircraft() {
           <h1 className="text-2xl font-semibold">Aviões · {RADAR_KM} km</h1>
           <p className="text-sm text-muted-foreground">
             {paused && watching ? 'Radar em pausa: o separador está em segundo plano (retoma ao voltar)' : lastUpdate ? `Atualizado há ${Math.round((now - lastUpdate) / 1000)} s · ${planes.length} aviões` : watching ? 'A obter dados…' : 'Vigia em pausa'}
-            {source ? ` · fonte: ${source}` : ''}
+            {source ? ` · fonte: ${source}` : ''}{remaining !== null ? ` · saldo adsb.lol: ${fmtNum(remaining, 0)}` : ''}
           </p>
         </div>
         <Button variant="outline" onClick={() => setWatching(!watching)}>{watching ? <><Pause className="mr-2 h-4 w-4" />Pausar vigia</> : <><Play className="mr-2 h-4 w-4" />Vigiar</>}</Button>
       </div>
+      {outOfBudget && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/60 p-3 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          Sem saldo diário no adsb.lol (a única fonte que a rede do Zite consegue alcançar neste momento).
+          {resetAt ? ` Renova por volta das ${new Date(resetAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' })}.` : ' A renovar ao longo do dia.'}
+          {' '}O radar continua a verificar, mas de forma mais espaçada para não atrasar a renovação.
+        </div>
+      )}
       {watching && !paused && lastUpdate !== null && now - lastUpdate > STALE_MS && (
         <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
           <AlertTriangle className="h-4 w-4" />Dados com mais de {Math.round(STALE_MS / 60000)} min: previsões suspensas até haver nova atualização.
