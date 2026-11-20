@@ -33,6 +33,11 @@ export default function Aircraft() {
         </div>
         <Button variant="outline" onClick={() => setWatching(!watching)}>{watching ? <><Pause className="mr-2 h-4 w-4" />Pausar vigia</> : <><Play className="mr-2 h-4 w-4" />Vigiar</>}</Button>
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        Dados: <a className="underline" href="https://flyitalyadsb.com" target="_blank" rel="noreferrer">flyitalyadsb.com</a>, licença{' '}
+        <a className="underline" href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a>
+        {' '}(reserva: adsb.lol, adsb.fi).
+      </p>
       {outOfBudget && (
         <div className="flex items-center gap-2 rounded-lg border border-destructive/60 p-3 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4" />
