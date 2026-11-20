@@ -20,12 +20,23 @@ export default function Routes() {
   const [mode, setMode] = useState<Mode>('semanal');
   const [data, setData] = useState<GetSightingStatsOutputType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastLoad, setLastLoad] = useState<number | null>(null);
+  const [now2, setNow2] = useState(Date.now());
+  useEffect(() => { const id = setInterval(() => setNow2(Date.now()), 10_000); return () => clearInterval(id); }, []);
   const [cal, setCal] = useState<DayScore[]>([]);
   const reach = settings.maxTravelKm, minEl = settings.minElevationDegrees;
 
   useEffect(() => setBody(target), [target]);
+  // O coletor em segundo plano acrescenta observações constantemente (2x/minuto), por isso esta página
+  // teria de ser fechada e reaberta para ver dados novos se só buscasse uma vez. Atualiza-se sozinha a
+  // cada minuto, o que também é o que faz o mapa de densidades e as restantes estatísticas mudarem com o
+  // tempo em vez de ficarem presas aos dados do primeiro carregamento.
   useEffect(() => {
-    getSightingStats({ minFrom: 0, minTo: 1439, weekday: null }).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+    let alive = true;
+    const load = () => getSightingStats({ minFrom: 0, minTo: 1439, weekday: null }).then((d) => alive && setData(d)).catch(() => alive && setData(null)).finally(() => { if (alive) { setLoading(false); setLastLoad(Date.now()); } });
+    load();
+    const id = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(id); };
   }, []);
 
   const analysis = useMemo(() => (data ? analyse(data.rows, day, home, body, minEl, mode) : null), [data, day, home, body, minEl, mode]);
@@ -113,6 +124,7 @@ export default function Routes() {
           {' '}Os dados só são recolhidos enquanto o separador Aviões está aberto; quantas mais semanas e horas diferentes, mais fiável.
           {data.daysObserved < 14 && ' Ainda há poucos dias de dados: as probabilidades são indicativas.'}
           {data.truncated && ' Atenção: só foram usadas as 10 000 observações mais recentes.'}
+          {lastLoad && ` · atualizado há ${Math.max(0, Math.round((now2 - lastLoad) / 1000))} s (atualiza-se sozinho a cada minuto)`}
         </div>
       )}
 

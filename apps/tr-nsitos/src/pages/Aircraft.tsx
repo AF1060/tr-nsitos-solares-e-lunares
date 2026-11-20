@@ -63,10 +63,14 @@ export default function Aircraft() {
             <span>✚ Você (centro do radar)</span>
             <span><span className="text-primary">●</span> {target}, na direção onde está no céu</span>
             <span>• Avião, com traço a indicar o rumo</span>
-            <span><span className="text-primary">●</span> Avião que vai cruzar o disco (com rota prevista)</span>
+            <span><span className="text-primary">●</span> Avião que cruza o disco na sua posição</span>
+            <span><span style={{ color: 'hsl(var(--chart-4))' }}>●</span> Avião que só cruza num local abaixo, não aqui</span>
             <span><span style={{ color: 'hsl(var(--chart-4))' }}>◆</span> Local onde o avião passa no centro do disco</span>
             <span>Círculo tracejado: distância máxima que se desloca ({settings.maxTravelKm} km)</span>
           </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            O radar mostra direção (azimute) e distância ao solo, não a altura no céu: um avião cujo traço cruze a linha tracejada para {target} está na mesma direção, mas pode estar bem acima ou abaixo — só sabemos que cruza mesmo o disco quando a caixa à direita diz "No seu local".
+          </p>
         </div>
         <div className="space-y-3">
           <div className="text-sm font-medium">Vão passar frente {discName} (próx. 10 min, visto daqui ou de um local até {settings.maxTravelKm} km)</div>
@@ -76,7 +80,9 @@ export default function Aircraft() {
               <div className="flex justify-between"><span className="font-semibold">{p.plane.callsign}</span><span className="text-sm tabular-nums">{fmtIn((p.entry ?? p.closest) - now)}</span></div>
               <div className="text-xs text-muted-foreground">{fmtNum(p.plane.altM, 0)} m · {fmtNum(p.rangeKm, 0)} km · ± {fmtNum(p.errDeg, 2)}° / ± {fmtNum(p.errS, 0)} s</div>
               <div className={cn('mt-1 text-xs', p.confidence === 'baixa' ? 'text-muted-foreground' : 'text-primary')}>
-                {p.entry ? `No seu local: passa a ${fmtNum(p.minSep, 2)}° do centro · ${fmtNum(p.inDiscS, 1)} s no disco · confiança ${p.confidence}` : `No seu local não passa frente ${discName}; só num dos locais abaixo`}
+                {p.entry
+                  ? `No seu local: passa a ${fmtNum(p.minSep, 2)}° do centro · ${fmtNum(p.inDiscS, 1)} s no disco · confiança ${p.confidence}`
+                  : `No seu local, fica a ${fmtNum(p.minSep, 1)}° do centro (o disco tem só ${fmtNum(p.radiusDeg, 2)}° de raio) — não passa aqui; só num dos locais abaixo.`}
               </div>
               {p.alternatives[0] && (
                 <div className="mt-1 text-xs">Centro do disco: {fmtNum(p.alternatives[0].distKm, 1)} km para {compass(p.alternatives[0].brg)} às {fmtTime(p.alternatives[0].t)}{p.alternatives.length > 1 ? ` · +${p.alternatives.length - 1} locais` : ''}{p.alternatives[0].band ? ` · faixa de ± ${fmtNum(p.alternatives[0].band.halfWidthM, 0)} m` : ''}</div>
@@ -96,7 +102,10 @@ function RadarView({ predictions }: { predictions: PlanePrediction[] }) {
   const { planes } = useAircraft();
   const { settings } = useApp();
   const body = bodyTopo(target, new Date(), home);
-  const hot = new Set(predictions.map((p) => p.plane.icao24));
+  // 'aqui': a trajetória real passa no disco visto da sua posição (p.entry !== null).
+  // 'alternativa': só um dos locais abaixo passa no centro do disco; aqui não há alinhamento.
+  const hotHere = new Set(predictions.filter((p) => p.entry !== null).map((p) => p.plane.icao24));
+  const hotElsewhere = new Set(predictions.filter((p) => p.entry === null).map((p) => p.plane.icao24));
   const xy = (dist: number, brg: number) => [(dist / RADAR_KM) * Math.sin((brg * Math.PI) / 180) * 100, -(dist / RADAR_KM) * Math.cos((brg * Math.PI) / 180) * 100];
   const [bx, by] = xy(RADAR_KM, body.az);
   return (
@@ -127,9 +136,10 @@ function RadarView({ predictions }: { predictions: PlanePrediction[] }) {
           const [x, y] = xy(dist, brg);
           pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
         }
+        const here = pr.entry !== null;
         return (
           <g key={`path-${pr.plane.icao24}`}>
-            <polyline points={pts.join(' ')} fill="none" stroke="hsl(var(--primary))" strokeWidth={0.7} strokeDasharray="2 1.5" />
+            <polyline points={pts.join(' ')} fill="none" stroke={here ? 'hsl(var(--primary))' : 'hsl(var(--chart-4))'} strokeWidth={0.7} strokeDasharray="2 1.5" />
             {pr.alternatives.map((a, i) => {
               const [x, y] = xy(a.distKm, a.brg);
               return <rect key={i} x={x - 1.6} y={y - 1.6} width={3.2} height={3.2} transform={`rotate(45 ${x} ${y})`} fill="hsl(var(--chart-4))" />;
@@ -142,12 +152,14 @@ function RadarView({ predictions }: { predictions: PlanePrediction[] }) {
         if (dist > RADAR_KM) return null;
         const [x, y] = xy(dist, brg);
         const h = (p.track * Math.PI) / 180;
-        const isHot = hot.has(p.icao24);
+        const isHere = hotHere.has(p.icao24);
+        const isElsewhere = hotElsewhere.has(p.icao24);
+        const color = isHere ? 'hsl(var(--primary))' : isElsewhere ? 'hsl(var(--chart-4))' : 'hsl(var(--muted-foreground))';
         return (
           <g key={p.icao24}>
-            <line x1={x} y1={y} x2={x + Math.sin(h) * 6} y2={y - Math.cos(h) * 6} stroke={isHot ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'} strokeWidth={0.6} />
-            <circle cx={x} cy={y} r={isHot ? 2 : 1.2} fill={isHot ? 'hsl(var(--primary))' : 'hsl(var(--foreground))'} />
-            {isHot && <text x={x + 2.5} y={y - 2} fontSize={3.5} fill="hsl(var(--primary))">{p.callsign}</text>}
+            <line x1={x} y1={y} x2={x + Math.sin(h) * 6} y2={y - Math.cos(h) * 6} stroke={color} strokeWidth={0.6} />
+            <circle cx={x} cy={y} r={isHere || isElsewhere ? 2 : 1.2} fill={isHere || isElsewhere ? color : 'hsl(var(--foreground))'} />
+            {(isHere || isElsewhere) && <text x={x + 2.5} y={y - 2} fontSize={3.5} fill={color}>{p.callsign}</text>}
           </g>
         );
       })}
